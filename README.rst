@@ -1,5 +1,5 @@
 datetimeparser
-=========
+==============
 
 Little python-module to parse strings to datetime.time-, -date- or -datetime-objects.
 
