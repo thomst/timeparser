@@ -13,6 +13,9 @@ class DateTimeParserTests(unittest.TestCase, DateTimeParser):
         self.assertRaises(ValueError, self.parsetime, '23;44')
         self.assertRaises(ValueError, self.parsedate, '2013-4.24')
         self.assertRaises(ValueError, self.parsedatetime, '13.04.24#23:44')
+        self.assertRaises(ValueError, self.parsetime, str())
+        self.assertRaises(TypeError, self.parsedate, None)
+        self.assertRaises(TypeError, self.parsedatetime, None)
 
     def test_values(self):
         self.assertEqual(self.parsetime('23:44'), datetime.time(23,44))
