@@ -1,5 +1,5 @@
 """
-Parse strings to datetime.time-, -date- or -datetime-objects.
+Parse strings to time-, date-, datetime- or timedelta-objects of the datetime-module.
 """
 import datetime
 import re
@@ -22,7 +22,6 @@ DATE_TIME_SEPS = [' ', ',', '_', ';', '']
 LITTLE_ENDIAN = 10
 BIG_ENDIAN = 20
 MIDDLE_ENDIAN = 30
-
 
 def setToday(value):
     global TODAY
@@ -47,6 +46,7 @@ def guessEndian():
 setEndian(guessEndian())
 setToday(datetime.date.today())
 
+
 def getTimeFormats(seps=None):
     seps = seps or TIME_SEPS
     formats = ['%X', '%H']
@@ -58,6 +58,7 @@ def getTimeFormats(seps=None):
         formats.append(sep.join(codes) + '.%f')
         formats.append(sep.join(codes) + ' %f')
     return formats
+
 
 def getDateFormats(seps=None, endian=None):
     seps = seps or DATE_SEPS
@@ -83,6 +84,7 @@ def getDateFormats(seps=None, endian=None):
         formats.append(sep.join(codes).replace('m', 'b'))
         formats.append(sep.join(codes).replace('m', 'B'))
     return formats
+
 
 def getDatetimeFormats(seps=None, date_formats=list(), time_formats=list(), endian=None):
     seps = seps or DATE_TIME_SEPS
@@ -110,7 +112,8 @@ def parsetime(string, formats=list()):
     Return a datetime.time-object.
     Raises ValueError if string couldn't be parsed as time.
     """
-    formats = formats or getTimeFormats()
+    seps = [s for s in TIME_SEPS if s in string]
+    formats = formats or getTimeFormats(seps=seps)
     for f in formats:
         try: return datetime.datetime.strptime(string, f).time()
         except ValueError: continue
@@ -132,7 +135,8 @@ def parsedate(string, formats=list(), today=None):
     Return a datetime.date-object.
     Raises ValueError if string couldn't be parsed as date.
     """
-    formats = formats or getDateFormats()
+    seps = [s for s in DATE_SEPS if s in string]
+    formats = formats or getDateFormats(seps=seps)
     today = today or TODAY
     for f in formats:
         try: date = datetime.datetime.strptime(string, f).date()
@@ -164,12 +168,10 @@ def parsedatetime(string, formats=list()):
     Return a datetime.datetime-object.
     Raises ValueError if string couldn't be parsed as datetime.
     """
-    formats = formats or getDatetimeFormats()
-    if not formats:
-        df = DATE_FORMATS
-        tf = TIME_FORMATS
-        for delimiter in DATE_TIME_SEPS:
-            formats += [delimiter.join((d, t)) for d in df for t in tf]
+    dseps = [s for s in DATE_SEPS if s in string]
+    tseps = [s for s in TIME_SEPS if s in string]
+    dtseps = [s for s in DATE_TIME_SEPS if s in string]
+    formats = formats or getDatetimeFormats(dtseps, getDateFormats(dseps), getTimeFormats(tseps))
     for f in formats:
         try: return datetime.datetime.strptime(string, f)
         except ValueError: continue
