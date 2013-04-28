@@ -36,7 +36,7 @@ def setEndian(value):
 #TODO: find a more solid way (which could also regard MIDDLE_ENDIAN)
 def guessEndian():
     # one, two, three = DIGITS.findall(today.strftime('%x'))
-    # this gives me a MIDDLE_ENDIAN-date instead of a LITTLE_ENDIAN.
+    # returns a MIDDLE_ENDIAN-date instead of a LITTLE_ENDIAN.
     # For now I use unix's date-command.
     datestring = subprocess.check_output(shlex.split('date +%x'))
     one, two, three = DIGITS.findall(datestring)
@@ -112,7 +112,7 @@ def parsetime(string, formats=list()):
     Return a datetime.time-object.
     Raises ValueError if string couldn't be parsed as time.
     """
-    seps = [s for s in TIME_SEPS if s in string]
+    seps = [s for s in TIME_SEPS if s in string][:1]
     formats = formats or getTimeFormats(seps=seps)
     for f in formats:
         try: return datetime.datetime.strptime(string, f).time()
@@ -135,7 +135,7 @@ def parsedate(string, formats=list(), today=None):
     Return a datetime.date-object.
     Raises ValueError if string couldn't be parsed as date.
     """
-    seps = [s for s in DATE_SEPS if s in string]
+    seps = [s for s in DATE_SEPS if s in string][:1]
     formats = formats or getDateFormats(seps=seps)
     today = today or TODAY
     for f in formats:
