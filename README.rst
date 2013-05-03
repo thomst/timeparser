@@ -47,6 +47,18 @@ How to use? ::
     >>> timeparser.parsedatetime('24-04-13_23:44:05')
     datetime.datetime(2013, 4, 24, 23, 44, 5)
 
+or with argparse ::
+
+    >>> import argparse
+    >>> from timeparser import ParseDatetime
+    >>>
+    >>> parser = argparse.ArgumentParser()
+    >>> parser.add_argument('--datetime', action=ParseDatetime, nargs='+')
+    >>>
+    >>> parser.parse_args("--datetime 2.4.2013 23:02".split()).datetime
+    datetime.datetime(2013, 4, 2, 23, 2)
+
+
 
 
 Reporting Bugs
