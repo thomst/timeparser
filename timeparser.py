@@ -5,15 +5,10 @@ import datetime
 import re
 import subprocess
 import shlex
+import argparse
 
 
-DIGITS = re.compile('(?<!\w)([-+]?\w+)(?![-+\w])')
-WEEKS = 0
-DAYS = 1
-HOURS = 2
-MINUTES = 3
-SECONDS = 4
-
+DELTA_KEYS = ('weeks', 'days', 'hours', 'minutes', 'seconds')
 
 LITTLE_ENDIAN = 10
 BIG_ENDIAN = 20
@@ -46,7 +41,7 @@ def guessEndian():
     # Mind that this won't work if date +%x returns a datestring with a
     # two-digit-year.
     datestring = subprocess.check_output(shlex.split('date +%x'))
-    one, two, three = DIGITS.findall(datestring)
+    one, two, three = re.findall('[-+]?\d+', datestring)
     if int(one) == datetime.date.today().year: return BIG_ENDIAN
     else: return LITTLE_ENDIAN
 
@@ -405,6 +400,7 @@ def parsedate(string, formats=list(), today=None):
     Args:
         string (str):       string to be parsed
         formats (list):     list of timecode-formats
+        today (date):
 
     Parsing string is tried out with every format in formats. If formats not
     given a DateFormats-list is used instead.
@@ -431,13 +427,14 @@ def parsedate(string, formats=list(), today=None):
     raise ValueError("couldn't parse %s as date" % string)
 
 
-def parsedatetime(string, formats=list()):
+def parsedatetime(string, formats=list(), today=None):
     """
     Parse a string to a datetime.datetime-object.
 
     Args:
         string (str):       string to be parsed
         formats (list):     list of timecode-formats
+        today (date):
 
     Parsing string is tried out with every format in formats. If formats not
     given a DatetimeFormats-list is used instead.
@@ -447,37 +444,285 @@ def parsedatetime(string, formats=list()):
     Raises ValueError if string couldn't be parsed as datetime.
     """
     formats = formats or DatetimeFormats(string=string)
+    today = today or TODAY
     for f in formats:
-        try: return datetime.datetime.strptime(string, f)
+        try: dtime = datetime.datetime.strptime(string, f)
         except ValueError: continue
+        else:
+            if '%y' not in f.lower():
+                dtime = dtime.replace(year=today.year)
+            if '%m' not in f and '%b' not in f.lower():
+                dtime = dtime.replace(month=today.month)
+            return dtime
     raise ValueError("couldn't parse %s as datetime" % string)
 
 
-def parsetimedelta(string, key=WEEKS):
+def parsetimedelta(string, key='weeks'):
+    #TODO: rework the key-word-docstring-part.
     """
     Parse a string to a datetime.timedelta-object.
 
     Args:
         string (str):       string to be parsed
-        key (int):          index for the key-list
+        key (str):          string that contains or is substring of a key for
+                            the timedelta-kwargs.
 
-    Key-list is a list of keys
-    From the keys of key-list and the values that could be extracted from string
-    the kwargs for the datetime.timedelta-constructor will be built. The key-list
-    is ('weeks', 'days', ... , 'seconds') and will be used from key-index on.
-    Use the module-gobals WEEKS, DAYS, HOURS, MINUTES and SECONDS to pass to key.
+    First the string is scanned for pointers to keywords that can be used with
+    the leading or following values as kwargs for datetime.timedelta.
+    If no pointers are found, the key-argument determines the unit for the first
+    value found within string. Following values have each the next lesser unit.
+
+    For the pointers or the key-argument it is sufficient either to be a
+    substring of a keyword or containing one.
+    keywords are 'weeks', 'days', 'hours', 'minutes' and 'seconds'.
 
     Return a datetime.timedelta-object.
     Raises ValueError if string couldn't be parsed as timedelta.
     """
-    keys = ('weeks', 'days', 'hours', 'minutes', 'seconds')
-    try: values = [int(x) for x in DIGITS.findall(string)]
-    except ValueError: raise ValueError("couldn't parse %s as timedelta" % string)
-    except TypeError: raise
-    else:
-        kwargs = dict(zip(keys[key:], values))
-        timedelta = datetime.timedelta(**kwargs)
-        return timedelta
+    msg = "couldn't parse %s as timedelta"
+    key_msg = "couldn't find a timedelta-key for '%s'"
+
+    rkey = key.lower()
+
+    values = [int(x) for x in re.findall('[-+]?\d+', string)]
+    rkeys = re.findall('[a-zA-Z]+', string)
+
+    try: key = [k for k in DELTA_KEYS if k in rkey or re.match(rkey, k)][0]
+    except IndexError: raise ValueError(key_msg % key)
+    try: keys = map(lambda r: [k for k in DELTA_KEYS if re.match(r, k)][0], rkeys)
+    except IndexError: raise ValueError(msg % string)
+
+    if len(keys) == len(values): kwargs = dict(zip(keys, values))
+    elif keys: raise ValueError(msg % string)
+    else: kwargs = dict(zip(DELTA_KEYS[DELTA_KEYS.index(key):], values))
+
+    try: timedelta = datetime.timedelta(**kwargs)
+    except: raise ValueError(msg % string)
+    else: return timedelta
+
+
+
+
+class TimeArgsMixin:
+    def combine_datetime(self, datestring, timestring):
+        date = parsedate(datestring)
+        time = parsetime(timestring)
+        return datetime.datetime.combine(date, time)
+
+    def time_or_datetime(self, values):
+        if len(values) == 1: return parsetime(values[0])
+        elif len(values) == 2: return self.combine_datetime(*values)
+        else: raise ValueError("'%s' couldn't be parsed as time or datetime" % values)
+
+    def append(self, namespace, obj):
+        if getattr(namespace, self.dest):
+            getattr(namespace, self.dest).append(obj)
+        else:
+            setattr(namespace, self.dest, [obj])
+
+    def raiseArgumentError(self, which, args):
+        raise argparse.ArgumentError(
+            self,
+            "'%s' couldn't be parsed as %s" % (' '.join(args), which)
+            )
+
+
+
+class ParseTime(argparse.Action, TimeArgsMixin):
+    """argparse-argument-action to parse cmdline-parameters as time-object.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--time',
+            action=timeparser.ParseTime
+            )
+        parser.parse_args('--time 23:20:33'.split()).time
+        #this will be: datetime.time(23, 20, 33)
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: time = parsetime(value)
+        except ValueError: self.raiseArgumentError('time', values)
+        else: setattr(namespace, self.dest, time)
+
+
+class ParseDate(argparse.Action, TimeArgsMixin):
+    """argparse-argument-action to parse cmdline-parameters as date-object.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--date',
+            action=timeparser.ParseDate
+            )
+        parser.parse_args('--date 24/04/2013'.split()).date
+        #this will be: datetime.date(2013, 4, 24)
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: date = parsedate(value)
+        except ValueError: self.raiseArgumentError('date', values)
+        else: setattr(namespace, self.dest, date)
+
+
+class ParseTimedelta(argparse.Action, TimeArgsMixin):
+    """argparse-argument-action to parse cmdline-parameters as timedelta-object.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--days',
+            action=timeparser.ParseTimedelta
+            )
+        parser.parse_args('--days 20 12 4'.split()).days
+        #this will be: datetime.timedelta(20, 43440).
+
+    The dest-property of argparse.Action (which is mostly the literal part of
+    the option-string) is passed to parsetimedelta as key. So that in the exemple
+    above the values 20, 12 and 4 are interpreted as 20 days, 12 hours and 4 min.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: timedelta = parsetimedelta(value, self.dest)
+        except ValueError: self.raiseArgumentError('timedelta', values)
+        else: setattr(namespace, self.dest, timedelta)
+
+
+class ParseDatetime(argparse.Action, TimeArgsMixin):
+    """argparse-argument-action to parse cmdline-parameters as datetime-object.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--datetime',
+            action=timeparser.ParseDatetime
+            )
+        parser.parse_args('--datetime 24/04/2013 23:22'.split()).datetime
+        #this will be: datetime.datetime(2013, 4, 24, 23, 22)
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            if len(values) == 2: datetime = self.combine_datetime(*values)
+            else: datetime = parsedatetime(' '.join(values))
+        except ValueError: self.raiseArgumentError('datetime', values)
+        else: setattr(namespace, self.dest, datetime)
+
+
+class ParseTimeOrDatetime(argparse.Action, TimeArgsMixin):
+    """argparse-argument-action to parse cmdline-parameters as datetime-object.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--time-or-datetime',
+            action=timeparser.ParseTimeOrDatetime
+            )
+        parser.parse_args('--time-or-datetime 24/04/2013 23:22'.split()).time_or_datetime
+        #this will be: datetime.datetime(2013, 4, 24, 23, 22)
+
+        parser.parse_args('--time-or-datetime 23:22'.split()).time_or_datetime
+        #and this will just be: datetime.time(23, 22)
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        try: obj = self.time_or_datetime(values)
+        except ValueError: self.raiseArgumentError('time or datetime', values)
+        else: setattr(namespace, self.dest, obj)
+
+
+class AppendTime(argparse.Action, TimeArgsMixin):
+    """
+    Like ParseTime with support for multiple use of arguments.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--time',
+            action=timeparser.ParseTime
+            )
+        parser.parse_args('--time 23:20:33 --time 22:20'.split()).time
+        #this will be: [datetime.time(23, 20, 33), datetime.time(22, 20)]
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: time = parsetime(value)
+        except ValueError: self.raiseArgumentError('time', values)
+        else: self.append(namespace, time)
+
+
+class AppendDate(argparse.Action, TimeArgsMixin):
+    """
+    Like ParseDate with support for multiple use of arguments.
+
+    usage:
+        import argparse
+        import timeparser
+
+        parser = argparse.ArgumentParser(prog='PROG')
+        parser.add_argument(
+            '--date',
+            action=timeparser.ParseTime
+            )
+        parser.parse_args('--date 23.4.13 --date 24.4.13'.split()).date
+        #this will be: [datetime.date(2013, 4, 23), datetime.date(2013, 4, 24)]
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: date = parsedate(value)
+        except ValueError: self.raiseArgumentError('date', values)
+        else: self.append(namespace, date)
+
+
+class AppendTimedelta(argparse.Action, TimeArgsMixin):
+    """
+    Like ParseTimedelta with support for multiple use of arguments.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = ' '.join(values)
+        try: timedelta = parsetimedelta(value)
+        except ValueError: self.raiseArgumentError('timedelta', values)
+        else: self.append(namespace, timedelta)
+
+
+class AppendDatetime(argparse.Action, TimeArgsMixin):
+    """
+    Like ParseDatetime with support for multiple use of arguments.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            if len(values) == 2: datetime = self.combine_datetime(*values)
+            else: datetime = parsedatetime(' '.join(values))
+        except ValueError: self.raiseArgumentError('datetime', values)
+        else: self.append(namespace, datetime)
+
+
+class AppendTimeOrDatetime(argparse.Action, TimeArgsMixin):
+    """
+    Like ParseTimeOrDatetime with support for multiple use of arguments.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        try: obj = self.time_or_datetime(values)
+        except ValueError: self.raiseArgumentError('time or datetime', values)
+        else: self.append(namespace, obj)
+
 
 
 

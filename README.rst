@@ -2,11 +2,8 @@ timeparser
 ==========
 
 A python-module to parse strings to time-, date-, datetime- or timedelta-objects.
-A set of time-formats are automatically and string-specifically produced and
-applied. The first one fitting is used to parse the string.
-The collection of formats to produce are highly configurable. In the default-
-configuration parses nearly everything.
-
+Which formats are accepted is configurable. The module also provides classes to
+use with the argparse-module for parsing command-line arguments.
 
 Latest Version
 --------------

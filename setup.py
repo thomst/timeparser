@@ -1,7 +1,7 @@
 import os
 from distutils.core import setup
 
-VERSION = "0.2"
+VERSION = "0.3"
 
 setup(
     name = "timeparser", 
@@ -10,7 +10,7 @@ setup(
     author_email = "thomaslfuss@gmx.de",
     url = "https://github.com/thomst/timeparser",
     download_url = "https://pypi.python.org/packages/source/t/timeparser/timeparser-{version}.tar.gz".format(version=VERSION),
-    description = 'python-module to parse strings to time-, date-, datetime- or timedelta-objects.',
+    description = 'A python-module to parse strings to time-, date-, datetime- or timedelta-objects. Which formats are accepted is configurable. The module also provides classes to use with the argparse-module for parsing command-line arguments.',
     long_description = open('README.rst').read() if os.path.isfile('README.rst') else str(),
     py_modules = ["timeparser"],
     classifiers=[
