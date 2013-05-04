@@ -1,14 +1,3 @@
-Notice:
-=======
-
-**timeparser is deprecated; use timeparse instead**
-
-After integrating the parser-functions (which were developed as *timeparser*)
-into the argparse-extension-module *timeparse*, the *timeparser*-module is now 
-redundant and will be removed. Please follow the development of *timeparse*
-instead!
-
-
 timeparser
 ==========
 
