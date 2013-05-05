@@ -63,18 +63,18 @@ class BaseFormats(list):
     """
     FIGURES = [True, True, True]
     ALLOW_NO_SEP = True
-    def __init__(self, string=None, seps=None, figures=None, allow_no_sep=None):
+    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
         """
         Constructor of BaseFormats.
         
         Kwargs:
             string (str):       string formats are generated for
             seps (list):        separators formats are generated with
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             figures (list):     list of three boolean that predicts how many
                                 single codes a format may have.
                                 E.g.: [True, False, True] for date-formats could
                                 be '%d' and '%d.%m.%y' but not '%d.%m'.
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
 
         seps, figures and allow_no_sep determine the generic range of formats that
         are accepted, while string is used to predict specific parameters that
@@ -103,9 +103,9 @@ class BaseFormats(list):
 
         Kwargs:
             seps (list):        separators formats are generated with
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             figures (list):     list of three boolean that predicts how many
                                 digits the formats have.
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
 
         All these parameters exists as class-gobals.
         (The child-classes TimeFormats an DateFormats add specific globals.)
@@ -173,22 +173,23 @@ class TimeFormats(BaseFormats):
     MICROSEC_SEPS = ['.', ' ']
     ALLOW_MICROSEC = False
 
-    def __init__(self, string=None, seps=None, figures=None, allow_no_sep=None,
+    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 microsec=None, *args, **kwargs):
         """
         Constructor of TimeFormats.
         
         Kwargs:
+            string (str):       string formats are generated for
             seps (list):        separators formats are generated with
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             figures (list):     list of three boolean that predicts how many
                                 digits the formats have.
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             microsec (bool):    if True also formats with '%f' for microseconds
                                 are produced.
         """
         if microsec is None: self._microsec = self.ALLOW_MICROSEC
         else: self._microsec = microsec
-        super(TimeFormats, self).__init__(string, seps, figures, allow_no_sep)
+        super(TimeFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
     def config(cls, microsec=None, *args, **kwargs):
@@ -236,16 +237,17 @@ class DateFormats(BaseFormats):
     ALLOW_MONTH_NAME = True
     ENDIAN = guessEndian()
 
-    def __init__(self, string=None, seps=None, figures=None, allow_no_sep=None,
+    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_month_name=None, endian=None):
         """
         Constructor of DateFormats.
 
         Kwargs:
+            string (str):       string formats are generated for
             seps (list):        separators formats are generated with
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             figures (list):     list of three boolean that predicts how many
                                 digits the formats have.
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             allow_month_name (bool):    if True also '%b' and '%B' are used to
                                         produce formats.
             endian (int):               determines the order for dates (s.b.)
@@ -261,7 +263,7 @@ class DateFormats(BaseFormats):
             self._allow_month_name = self.ALLOW_MONTH_NAME
         else: self._allow_month_name = allow_month_name
         self._endian = endian or self.ENDIAN
-        super(DateFormats, self).__init__(string, seps, figures, allow_no_sep)
+        super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
     def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
@@ -290,7 +292,8 @@ class DateFormats(BaseFormats):
         Checks string for literal month-name and calls the
         super-class-_evaluate_string-method.
         """
-        if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
+        if self._allow_month_name:
+            if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
         super(DateFormats, self)._evaluate_string(string)
 
     def _get_code_list(self):
@@ -334,22 +337,24 @@ class DatetimeFormats(BaseFormats):
     DATE_SEPS = DateFormats.SEPS
     TIME_SEPS = TimeFormats.SEPS
 
-    def __init__(self, date_kwargs=dict(), time_kwargs=dict(), *args, **kwargs):
+    def __init__(self, string=None, seps=None, allow_no_sep=None,
+                date_kwargs=dict(), time_kwargs=dict()):
         """
         Constructor of DatetimeFormats.
 
         Kwargs:
+            string (str):           string formats are generated for
+            seps (list):            separators formats are generated with
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             date_kwargs (dict):     kwargs passed to the DateFormats-constructor
             time_kwargs (dict):     kwargs passed to the TimeFormats-constructor
 
         DatetimeFormats._gererate calles the DateFormats- and
         TimeFormats-constructor to combine those formats.
-
-        *args and **kwargs will be passed to BaseFormats.__init__.
         """
-        self._date_kwargs = date_kwargs
-        self._time_kwargs = time_kwargs
-        super(DatetimeFormats, self).__init__(*args, **kwargs)
+        self._date_kwargs = date_kwargs.copy()
+        self._time_kwargs = time_kwargs.copy()
+        super(DatetimeFormats, self).__init__(string, seps, allow_no_sep)
 
     def _evaluate_string(self, string):
         """
@@ -361,6 +366,7 @@ class DatetimeFormats(BaseFormats):
 #        used_seps = re.findall('\W+', string)
 #        common_seps = set(used_seps) & set(self._seps)
 
+        #TODO: go into detail
         #reduce seps for time- and date-formats:
         date_seps = self._date_kwargs.get('seps', None) or self.DATE_SEPS
         time_seps = self._time_kwargs.get('seps', None) or self.TIME_SEPS
