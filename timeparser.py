@@ -9,6 +9,7 @@ import shlex
 
 DELTA_KEYS = ('weeks', 'days', 'hours', 'minutes', 'seconds')
 
+#TODO: use just string instead: 'little', 'big', 'middle'
 LITTLE_ENDIAN = 10
 BIG_ENDIAN = 20
 MIDDLE_ENDIAN = 30
@@ -123,12 +124,17 @@ class BaseFormats(list):
         try: self._sep = [s for s in self._seps if s in string][0]
         except IndexError:
             if self._allow_no_sep: self._seps = list()
-            else: self._figures = [True, False, False]
+            elif self._figures[0]: self._figures = [True, False, False]
+            else: raise ValueError("no proper format for '%s'" % string)
         else:
-            self._seps.append(self._sep)
-            figures = string.split(self._sep)
-            if len(figures) == 3: self._figures = [False, False, True]
-            elif len(figures) == 2: self._figures = [False, True, False]
+            self._allow_no_sep = False
+            self._seps = [self._sep]
+            figures = len(string.split(self._sep))
+            if self._figures[2] and figures == 3:
+                self._figures = [False, False, True]
+            elif self._figures[1] and figures == 2:
+                self._figures = [False, True, False]
+            else: raise ValueError("no proper format for '%s'" % string)
 
     def _get_code_list(self):
         """
@@ -167,19 +173,22 @@ class TimeFormats(BaseFormats):
     MICROSEC_SEPS = ['.', ' ']
     ALLOW_MICROSEC = False
 
-    def __init__(self, microsec=None, *args, **kwargs):
+    def __init__(self, string=None, seps=None, figures=None, allow_no_sep=None,
+                microsec=None, *args, **kwargs):
         """
         Constructor of TimeFormats.
         
         Kwargs:
+            seps (list):        separators formats are generated with
+            figures (list):     list of three boolean that predicts how many
+                                digits the formats have.
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             microsec (bool):    if True also formats with '%f' for microseconds
                                 are produced.
-
-        *args and **kwargs will be passed to BaseFormats.__init__.
         """
         if microsec is None: self._microsec = self.ALLOW_MICROSEC
         else: self._microsec = microsec
-        super(TimeFormats, self).__init__(*args, **kwargs)
+        super(TimeFormats, self).__init__(string, seps, figures, allow_no_sep)
 
     @classmethod
     def config(cls, microsec=None, *args, **kwargs):
@@ -227,11 +236,16 @@ class DateFormats(BaseFormats):
     ALLOW_MONTH_NAME = True
     ENDIAN = guessEndian()
 
-    def __init__(self, allow_month_name=None, endian=None, *args, **kwargs):
+    def __init__(self, string=None, seps=None, figures=None, allow_no_sep=None,
+                allow_month_name=None, endian=None):
         """
         Constructor of DateFormats.
 
         Kwargs:
+            seps (list):        separators formats are generated with
+            figures (list):     list of three boolean that predicts how many
+                                digits the formats have.
+            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             allow_month_name (bool):    if True also '%b' and '%B' are used to
                                         produce formats.
             endian (int):               determines the order for dates (s.b.)
@@ -242,14 +256,12 @@ class DateFormats(BaseFormats):
         BIG_ENDIAN (biggest first):     year, month, day
         MIDDLE_ENDIAN (middle first):   month, day, year
         Use one of these constants as value for the endian-parameter.
-
-        *args and **kwargs will be passed to BaseFormats.__init__.
         """
         if allow_month_name is None:
             self._allow_month_name = self.ALLOW_MONTH_NAME
         else: self._allow_month_name = allow_month_name
         self._endian = endian or self.ENDIAN
-        super(DateFormats, self).__init__(*args, **kwargs)
+        super(DateFormats, self).__init__(string, seps, figures, allow_no_sep)
 
     @classmethod
     def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
