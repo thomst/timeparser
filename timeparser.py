@@ -352,6 +352,7 @@ class DatetimeFormats(BaseFormats):
         DatetimeFormats._gererate calles the DateFormats- and
         TimeFormats-constructor to combine those formats.
         """
+        # kwarg-dict need to be decoupled from the attr-dict!
         self._date_kwargs = date_kwargs.copy()
         self._time_kwargs = time_kwargs.copy()
         super(DatetimeFormats, self).__init__(string, seps, allow_no_sep)
