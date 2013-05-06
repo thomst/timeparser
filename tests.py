@@ -62,6 +62,29 @@ class ParserTests(unittest.TestCase):
         self.assertRaises(ValueError, parser, '20h 0s 4')
 
 
+class EndianTests(unittest.TestCase):
+    def tearDown(self):
+        timeparser.ENDIAN.set('l')
+
+    def test_endian(self):
+        endian = timeparser.ENDIAN
+        endian.set('l')
+        self.assertEqual(endian[0], 'day')
+        endian.set('b')
+        self.assertEqual(endian[0], 'year')
+        endian.set('m')
+        self.assertEqual(endian[0], 'month')
+
+
+class TodayTests(unittest.TestCase):
+    def tearDown(self):
+        timeparser.TODAY.set(datetime.date.today())
+
+    def test_endian(self):
+        self.assertEqual(timeparser.TODAY, datetime.date.today())
+        timeparser.TODAY.set(datetime.date(1,2,3))
+        self.assertEqual(timeparser.TODAY, datetime.date(1,2,3))
+
 
 if __name__ == '__main__':
     unittest.main()

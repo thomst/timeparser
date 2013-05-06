@@ -7,46 +7,64 @@ import subprocess
 import shlex
 
 
-DELTA_KEYS = ('weeks', 'days', 'hours', 'minutes', 'seconds')
 
-#TODO: use just string instead: 'little', 'big', 'middle'
-LITTLE_ENDIAN = 10
-BIG_ENDIAN = 20
-MIDDLE_ENDIAN = 30
+class TODAY(datetime.date):
+    def __new__(cls, date=None):
+        date = date or datetime.date.today()
+        return datetime.date.__new__(cls, date.year, date.month, date.day)
 
-def setToday(date):
-    """
-    Change the value of TODAY.
-    
-    Args:
-        date (datetime.date-obj):  new date for TODAY
+    @classmethod
+    def set(cls, date):
+        global TODAY
+        TODAY = cls(date)
 
-    Raises TypeError if date is not a datetime.date-instance.
-    """
-    global TODAY
-    if isinstance(date, datetime.date): TODAY = date
-    else: raise TypeError("'%s' is no datetime.date-instance" % date)
-
-setToday(datetime.date.today())
+TODAY = TODAY()
 
 
-#TODO: find a more solid way (which could also regard MIDDLE_ENDIAN)
-def guessEndian():
-    """
-    Try to guess which endian is the local standart.
-    """
-    # one, two, three = DIGITS.findall(today.strftime('%x'))
-    # returns a MIDDLE_ENDIAN-date instead of a LITTLE_ENDIAN.
-    # For now I use unix's date-command.
-    # Mind that this won't work if date +%x returns a datestring with a
-    # two-digit-year.
-    datestring = subprocess.check_output(shlex.split('date +%x'))
-    one, two, three = re.findall('[-+]?\d+', datestring)
-    if int(one) == datetime.date.today().year: return BIG_ENDIAN
-    else: return LITTLE_ENDIAN
+class ENDIAN:
+    KEY = None
+    OPTIONS = dict(
+        little = ('day', 'month', 'year'),
+        big = ('year', 'month', 'day'),
+        middle = ('month', 'day', 'year')
+        )
 
+    def __init__(self):
+        self.set()
 
+    def __iter__(self):
+        return self.OPTIONS[self.KEY].__iter__()
 
+    def __getitem__(self, key):
+        return self.OPTIONS[self.KEY].__getitem__(key)
+
+    def __repr__(self):
+        return str(self.OPTIONS[self.KEY])
+
+    @classmethod
+    def set(cls, key=None):
+        if key: cls.KEY = cls._check_key(key)
+        else: cls.KEY = cls._guess()
+
+    @classmethod
+    def _check_key(cls, key):
+        for k in cls.OPTIONS.keys():
+            if re.match(key, k): return k
+        else: raise ValueError("'%s' is an invalid key" % key)
+
+    @staticmethod
+    def _guess():
+        # today.strftime('%x') returns a middle-endian-date. Therefore I use the
+        # unix's date-command.
+        # (Mind that this won't work if date +%x returns a datestring with a
+        # two-digit-year.)
+        #TODO: find a more solid way (which could also regard 'middle')
+        datestring = subprocess.check_output(shlex.split('date +%x'))
+        one, two, three = re.findall('[-+]?\d+', datestring)
+        if int(one) == datetime.date.today().year: return 'big'
+        else: return 'little'
+
+ENDIAN = ENDIAN()
 
 
 class BaseFormats(list):
@@ -223,9 +241,8 @@ class DateFormats(BaseFormats):
         CODES = ['%d', '%m', '%y']          #codes used to produce formats
         SEPS = ['.', '-', '/', ' ']         #separators used to produce formats
         ALLOW_MONTH_NAME = True             #allow formats with codes '%b', '%B'
-        ENDIAN = guessEndian()              #determines the order for dates
 
-    SEPS, ALLOW_MONTH_NAME and ENDIAN can be changed via DateFormats.config
+    SEPS and ALLOW_MONTH_NAME can be changed via DateFormats.config
     """
     CODES = ['%d', '%m', '%y']
     SEPS = ['.', '-', '/', ' ']
@@ -235,10 +252,9 @@ class DateFormats(BaseFormats):
         'day' : ['%d']
         }
     ALLOW_MONTH_NAME = True
-    ENDIAN = guessEndian()
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_month_name=None, endian=None):
+                allow_month_name=None):
         """
         Constructor of DateFormats.
 
@@ -250,42 +266,25 @@ class DateFormats(BaseFormats):
                                 digits the formats have.
             allow_month_name (bool):    if True also '%b' and '%B' are used to
                                         produce formats.
-            endian (int):               determines the order for dates (s.b.)
-
-        Endianness is the order in which day, month and year constitutes a date.
-        This module defines three constants:
-        LITTLE_ENDIAN (little first):   day, month, year
-        BIG_ENDIAN (biggest first):     year, month, day
-        MIDDLE_ENDIAN (middle first):   month, day, year
-        Use one of these constants as value for the endian-parameter.
         """
         if allow_month_name is None:
             self._allow_month_name = self.ALLOW_MONTH_NAME
         else: self._allow_month_name = allow_month_name
-        self._endian = endian or self.ENDIAN
         super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
-    def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
+    def config(cls, allow_month_name=None, *args, **kwargs):
         """
         Modify class-configuration.
 
         Kwargs:
             allow_month_name (bool):    if True also '%b' and '%B' are used to
                                         produce formats.
-            endian (int):               determines the order for dates (s.a.)
 
         *args and **kwargs will be passed to BaseFormats.config.
         """
         if not allow_month_name is None: cls.ALLOW_MONTH_NAME = allow_month_name
-        if endian: cls.ENDIAN = endian
         super(DateFormats, cls).config(*args, **kwargs)
-
-    @staticmethod
-    def _get_order(endian):
-        if endian == LITTLE_ENDIAN: return ('day', 'month', 'year')
-        if endian == BIG_ENDIAN: return ('year', 'month', 'day')
-        if endian == MIDDLE_ENDIAN: return ('month', 'day', 'year')
 
     def _evaluate_string(self, string):
         """
@@ -298,19 +297,18 @@ class DateFormats(BaseFormats):
 
     def _get_code_list(self):
         code_list = list()
-        order = self._get_order(self._endian)
-        code_dict = dict([(k, self.CODE_DICT[k][0]) for k in order])
+        code_dict = dict([(k, self.CODE_DICT[k][0]) for k in ENDIAN])
 
         def get_month_name(order):
             c_dict = code_dict.copy()
             c_list = list()
             for month in self.CODE_DICT['month']:
                 c_dict['month'] = month
-                c_list.append([c_dict[k] for k in order])
+                c_list.append([c_dict[k] for k in ENDIAN])
             return c_list
 
         if self._figures[1]:
-            incomplete = list(order)
+            incomplete = list(ENDIAN)
             incomplete.remove('year')
             if self._allow_month_name: code_list.extend(get_month_name(incomplete))
             else: code_list.append([code_dict[k] for k in incomplete])
@@ -318,8 +316,8 @@ class DateFormats(BaseFormats):
         if self._figures[2]:
             for year in self.CODE_DICT['year']:
                 code_dict['year'] = year
-                if self._allow_month_name: code_list.extend(get_month_name(order))
-                else: code_list.append([code_dict[k] for k in order])
+                if self._allow_month_name: code_list.extend(get_month_name(ENDIAN))
+                else: code_list.append([code_dict[k] for k in ENDIAN])
 
         return code_list
 
@@ -533,6 +531,7 @@ def parsetimedelta(string, key='weeks'):
     Return a datetime.timedelta-object.
     Raises ValueError if string couldn't be parsed as timedelta.
     """
+    kws = ('weeks', 'days', 'hours', 'minutes', 'seconds')
     msg = "couldn't parse %s as timedelta"
     key_msg = "couldn't find a timedelta-key for '%s'"
 
@@ -541,14 +540,14 @@ def parsetimedelta(string, key='weeks'):
     values = [int(x) for x in re.findall('[-+]?\d+', string)]
     rkeys = re.findall('[a-zA-Z]+', string)
 
-    try: key = [k for k in DELTA_KEYS if k in rkey or re.match(rkey, k)][0]
+    try: key = [k for k in kws if k in rkey or re.match(rkey, k)][0]
     except IndexError: raise ValueError(key_msg % key)
-    try: keys = map(lambda r: [k for k in DELTA_KEYS if re.match(r, k)][0], rkeys)
+    try: keys = map(lambda r: [k for k in kws if re.match(r, k)][0], rkeys)
     except IndexError: raise ValueError(msg % string)
 
     if len(keys) == len(values): kwargs = dict(zip(keys, values))
     elif keys: raise ValueError(msg % string)
-    else: kwargs = dict(zip(DELTA_KEYS[DELTA_KEYS.index(key):], values))
+    else: kwargs = dict(zip(kws[kws.index(key):], values))
 
     try: timedelta = datetime.timedelta(**kwargs)
     except: raise ValueError(msg % string)
