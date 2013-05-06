@@ -81,11 +81,12 @@ class TodayTests(unittest.TestCase):
         timeparser.TODAY.set()
 
     def test_endian(self):
-        self.assertEqual(timeparser.TODAY, datetime.date.today())
-        timeparser.TODAY.set()
-        self.assertEqual(timeparser.TODAY, datetime.date.today())
-        timeparser.TODAY.set(1,2,3)
-        self.assertEqual(timeparser.TODAY, datetime.date(1,2,3))
+        today = timeparser.TODAY
+        self.assertEqual(today.dateobj, datetime.date.today())
+        today.set()
+        self.assertEqual(today.dateobj, datetime.date.today())
+        today.set(1,2,3)
+        self.assertEqual(today.dateobj, datetime.date(1,2,3))
 
 
 if __name__ == '__main__':

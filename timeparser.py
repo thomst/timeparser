@@ -8,22 +8,32 @@ import shlex
 
 
 
-class TODAY(datetime.date):
-    def __new__(cls, *args, **kwargs):
-        try: date = datetime.date(*args, **kwargs)
-        except: date = datetime.date.today()
-        return datetime.date.__new__(cls, date.year, date.month, date.day)
+class TODAY:
+    def __init__(self):
+        today = datetime.date.today()
+        self.set(today.year, today.month, today.day)
 
-    @classmethod
-    def set(cls, *args, **kwargs):
-        global TODAY
-        TODAY = cls(*args, **kwargs)
+    def set(self, *args, **kwargs):
+        if args or kwargs: self._dateobj = datetime.date(*args, **kwargs)
+        else: self._dateobj = datetime.date.today()
+
+    @property
+    def dateobj(self): return self._dateobj
+
+    @property
+    def year(self): return self._dateobj.year
+
+    @property
+    def month(self): return self._dateobj.month
+
+    @property
+    def day(self): return self._dateobj.day
+
 
 TODAY = TODAY()
 
 
 class ENDIAN(list):
-    KEY = None
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
         big = ('year', 'month', 'day'),
