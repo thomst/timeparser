@@ -78,11 +78,13 @@ class EndianTests(unittest.TestCase):
 
 class TodayTests(unittest.TestCase):
     def tearDown(self):
-        timeparser.TODAY.set(datetime.date.today())
+        timeparser.TODAY.set()
 
     def test_endian(self):
         self.assertEqual(timeparser.TODAY, datetime.date.today())
-        timeparser.TODAY.set(datetime.date(1,2,3))
+        timeparser.TODAY.set()
+        self.assertEqual(timeparser.TODAY, datetime.date.today())
+        timeparser.TODAY.set(1,2,3)
         self.assertEqual(timeparser.TODAY, datetime.date(1,2,3))
 
 

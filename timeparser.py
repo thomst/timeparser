@@ -9,14 +9,15 @@ import shlex
 
 
 class TODAY(datetime.date):
-    def __new__(cls, date=None):
-        date = date or datetime.date.today()
+    def __new__(cls, *args, **kwargs):
+        try: date = datetime.date(*args, **kwargs)
+        except: date = datetime.date.today()
         return datetime.date.__new__(cls, date.year, date.month, date.day)
 
     @classmethod
-    def set(cls, date):
+    def set(cls, *args, **kwargs):
         global TODAY
-        TODAY = cls(date)
+        TODAY = cls(*args, **kwargs)
 
 TODAY = TODAY()
 
