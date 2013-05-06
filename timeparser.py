@@ -88,11 +88,11 @@ class BaseFormats(list):
         the class' configuration durably.
         """
         super(BaseFormats, self).__init__()
-        self._seps = seps or self.SEPS[:]
         self._figures = figures or self.FIGURES[:]
+        if isinstance(seps, list): self._seps = seps[:]
+        else: self._seps = self.SEPS[:]
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
-        self._sep = None
         if string: self._evaluate_string(string)
         self._generate()
 
@@ -121,15 +121,15 @@ class BaseFormats(list):
         string. E.g. if string is '23:44:02' only formats with ':' as separator
         are produced.
         """
-        try: self._sep = [s for s in self._seps if s in string][0]
+        try: sep = [s for s in self._seps if s in string][0]
         except IndexError:
             if self._allow_no_sep: self._seps = list()
             elif self._figures[0]: self._figures = [True, False, False]
             else: raise ValueError("no proper format for '%s'" % string)
         else:
             self._allow_no_sep = False
-            self._seps = [self._sep]
-            figures = len(string.split(self._sep))
+            self._seps = [sep]
+            figures = len(string.split(sep))
             if self._figures[2] and figures == 3:
                 self._figures = [False, False, True]
             elif self._figures[1] and figures == 2:
@@ -174,7 +174,7 @@ class TimeFormats(BaseFormats):
     ALLOW_MICROSEC = False
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                microsec=None, *args, **kwargs):
+                allow_microsec=None, *args, **kwargs):
         """
         Constructor of TimeFormats.
         
@@ -184,32 +184,32 @@ class TimeFormats(BaseFormats):
             allow_no_sep (bool):    allows formats without separators ('%d%m%y')
             figures (list):     list of three boolean that predicts how many
                                 digits the formats have.
-            microsec (bool):    if True also formats with '%f' for microseconds
+            allow_microsec (bool):    if True also formats with '%f' for microseconds
                                 are produced.
         """
-        if microsec is None: self._microsec = self.ALLOW_MICROSEC
-        else: self._microsec = microsec
+        if allow_microsec is None: self._allow_microsec = self.ALLOW_MICROSEC
+        else: self._allow_microsec = allow_microsec
         super(TimeFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
-    def config(cls, microsec=None, *args, **kwargs):
+    def config(cls, allow_microsec=None, *args, **kwargs):
         """
         Modify class-configuration.
 
         Kwargs:
-            microsec (bool):    if True also formats with '%f' for microseconds
+            allow_microsec (bool):    if True also formats with '%f' for microseconds
                                 are produced.
 
         *args and **kwargs will be passed to BaseFormats.config.
         """
-        if not microsec is None: cls.ALLOW_MICROSEC = microsec
+        if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
 
     def _get_code_list(self):
         code_list = list()
         if self._figures[1]: code_list.append(self.CODES[:2])
         if self._figures[2]: code_list.append(self.CODES[:3])
-        if self._microsec:
+        if self._allow_microsec:
             for sep in self.MICROSEC_SEPS:
                 code_list.append(self.CODES[:2] + [sep.join(self.CODES[2:])])
         return code_list
@@ -334,11 +334,9 @@ class DatetimeFormats(BaseFormats):
     SEPS can be changed via DateFormats.config
     """
     SEPS = [' ', ',', '_', ';']
-    DATE_SEPS = DateFormats.SEPS
-    TIME_SEPS = TimeFormats.SEPS
 
     def __init__(self, string=None, seps=None, allow_no_sep=None,
-                date_kwargs=dict(), time_kwargs=dict()):
+                date_config=dict(), time_config=dict()):
         """
         Constructor of DatetimeFormats.
 
@@ -346,15 +344,26 @@ class DatetimeFormats(BaseFormats):
             string (str):           string formats are generated for
             seps (list):            separators formats are generated with
             allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            date_kwargs (dict):     kwargs passed to the DateFormats-constructor
-            time_kwargs (dict):     kwargs passed to the TimeFormats-constructor
+            date_config (dict):     kwargs passed to the DateFormats-constructor
+            time_config (dict):     kwargs passed to the TimeFormats-constructor
 
         DatetimeFormats._gererate calles the DateFormats- and
         TimeFormats-constructor to combine those formats.
         """
-        # kwarg-dict need to be decoupled from the attr-dict!
-        self._date_kwargs = date_kwargs.copy()
-        self._time_kwargs = time_kwargs.copy()
+        self._date_config = dict(
+            seps = DateFormats.SEPS,
+            allow_no_sep = DateFormats.ALLOW_NO_SEP,
+            figures = DateFormats.FIGURES,
+            allow_month_name = DateFormats.ALLOW_MONTH_NAME,
+            )
+        self._time_config = dict(
+            seps = TimeFormats.SEPS,
+            allow_no_sep = TimeFormats.ALLOW_NO_SEP,
+            figures = TimeFormats.FIGURES,
+            allow_microsec = TimeFormats.ALLOW_MICROSEC,
+            )
+        self._date_config.update(date_config)
+        self._time_config.update(time_config)
         super(DatetimeFormats, self).__init__(string, seps, allow_no_sep)
 
     def _evaluate_string(self, string):
@@ -362,26 +371,53 @@ class DatetimeFormats(BaseFormats):
         Try to reduce the amount of seps for all three formats-classes.
         time-seps and date-seps will be passed to the respective constructor.
         """
-        #TODO: try hard to split the string and pass the parts to the
-        #constructors of TimeFormats and DateFormats.
-#        used_seps = re.findall('\W+', string)
-#        common_seps = set(used_seps) & set(self._seps)
+        _used = re.findall('[_\W]+', string)
+        used = set(_used)
+        date_seps = set(self._date_config['seps']) & used
+        time_seps = set(self._time_config['seps']) & used
+        seps = set(self._seps) & used
 
-        #TODO: go into detail
-        #reduce seps for time- and date-formats:
-        date_seps = self._date_kwargs.get('seps', None) or self.DATE_SEPS
-        time_seps = self._time_kwargs.get('seps', None) or self.TIME_SEPS
-        self._seps = [s for s in self._seps if s in string]
-        self._date_kwargs['seps'] = [s for s in date_seps if s in string]
-        self._time_kwargs['seps'] = [s for s in time_seps if s in string]
+        #first check the usage of wrong separators
+        if not used <= date_seps | time_seps | seps:
+            raise ValueError("no proper format for '%s'" % string)
+
+        ordered = [s for i,s in enumerate(_used) if not s in _used[:i]]
+        common = seps & (date_seps | time_seps)
+        wanted = seps - (date_seps | time_seps)
+
+        self._date_config['seps'] = list(date_seps)
+        self._time_config['seps'] = list(time_seps)
+        self._seps = list(seps)
+
+        if len(wanted) == 1:
+            self._allow_no_sep = False
+            self._seps = list(wanted)
+        elif len(ordered) >= 3:
+            self._allow_no_sep = False
+            self._seps = ordered[1:2]
+        elif not wanted:
+            if common: self._seps = list(common)
+            else:
+                if self._allow_no_sep: self._seps = list()
+                else: raise ValueError("no proper format for '%s'" % string)
+        else: raise ValueError("no proper format for '%s'" % string)
+
+        if not self._allow_no_sep and len(self._seps) == 1:
+            datestring, timestring = string.split(self._seps[0])
+            self._date_config['string'] = datestring
+            self._time_config['string'] = timestring
+        else:
+            #if string couldn't be splitted at least refine the config...
+            if not re.search('[a-zA-Z]+', string):
+                self._date_config['allow_month_name'] = False
 
     def _generate(self):
         """
         Generate datetime-formats by combining date- and time-formats.
         """
         formats = list()
-        date_fmt = DateFormats(**self._date_kwargs)
-        time_fmt = TimeFormats(**self._time_kwargs)
+        date_fmt = DateFormats(**self._date_config)
+        time_fmt = TimeFormats(**self._time_config)
         if self._allow_no_sep: self._seps.append(str())
         for s in self._seps:
             formats += [s.join((d, t)) for d in date_fmt for t in time_fmt]
