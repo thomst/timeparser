@@ -22,7 +22,7 @@ class TODAY(datetime.date):
 TODAY = TODAY()
 
 
-class ENDIAN:
+class ENDIAN(list):
     KEY = None
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
@@ -30,25 +30,18 @@ class ENDIAN:
         middle = ('month', 'day', 'year')
         )
 
-    def __init__(self):
-        self.set()
+    def __new__(cls, key=None):
+        key = cls._check_key(key) or cls._guess()
+        return list.__new__(cls, cls.OPTIONS[key])
 
-    def __iter__(self):
-        return self.OPTIONS[self.KEY].__iter__()
-
-    def __getitem__(self, key):
-        return self.OPTIONS[self.KEY].__getitem__(key)
-
-    def __repr__(self):
-        return str(self.OPTIONS[self.KEY])
-
-    @classmethod
-    def set(cls, key=None):
-        if key: cls.KEY = cls._check_key(key)
-        else: cls.KEY = cls._guess()
+    def set(self, key=None):
+        key = self._check_key(key) or self._guess()
+        while self: self.pop()
+        self.extend(self.OPTIONS[key])
 
     @classmethod
     def _check_key(cls, key):
+        if not key: return None
         for k in cls.OPTIONS.keys():
             if re.match(key, k): return k
         else: raise ValueError("'%s' is an invalid key" % key)
