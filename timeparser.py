@@ -9,9 +9,7 @@ import shlex
 
 
 class TODAY:
-    def __init__(self):
-        today = datetime.date.today()
-        self.set(today.year, today.month, today.day)
+    def __init__(self): self.set()
 
     def set(self, *args, **kwargs):
         if args or kwargs: self._dateobj = datetime.date(*args, **kwargs)
@@ -29,25 +27,27 @@ class TODAY:
     @property
     def day(self): return self._dateobj.day
 
+    def __repr__(self):
+        return 'TODAY(%s, %s, %s)' % (self.year, self.month, self.day)
 
 TODAY = TODAY()
 
 
-class ENDIAN(list):
+class ENDIAN:
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
         big = ('year', 'month', 'day'),
         middle = ('month', 'day', 'year')
         )
+    def __init__(self): self.set()
 
-    def __new__(cls, key=None):
-        key = cls._check_key(key) or cls._guess()
-        return list.__new__(cls, cls.OPTIONS[key])
+    def __iter__(self): return self.OPTIONS[self._key].__iter__()
 
-    def set(self, key=None):
-        key = self._check_key(key) or self._guess()
-        while self: self.pop()
-        self.extend(self.OPTIONS[key])
+    def __getitem__(self, key): return self.OPTIONS[self._key].__getitem__(key)
+
+    def __repr__(self): return str(self.OPTIONS[self._key])
+
+    def set(self, key=None): self._key = self._check_key(key) or self._guess()
 
     @classmethod
     def _check_key(cls, key):
