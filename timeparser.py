@@ -5,6 +5,7 @@ import datetime
 import re
 import subprocess
 import shlex
+import inspect
 
 import warnings
 warnings.simplefilter('default')
@@ -351,7 +352,7 @@ class DateFormats(BaseFormats):
         """
         if not allow_month_name is None: cls.ALLOW_MONTH_NAME = allow_month_name
         #deprecated:
-        ENDIAN.set(endian)
+        if endian: ENDIAN.set(endian)
         ###########
         super(DateFormats, cls).config(*args, **kwargs)
 

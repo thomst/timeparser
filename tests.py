@@ -82,6 +82,7 @@ class EndianTests(unittest.TestCase):
         timeparser.setEndian('b')
         self.assertEqual(endian[0], 'year')
         timeparser.setEndian('m')
+        self.assertEqual(timeparser.DateFormats(endian='l').endian[1], 'month')
         self.assertEqual(endian[0], 'month')
 
 
