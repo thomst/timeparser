@@ -4,6 +4,10 @@ import timeparser
 
 
 class ParserTests(unittest.TestCase):
+    def setUp(self):
+        timeparser.ENDIAN.set('little')
+        timeparser.TODAY.set()
+
     def test_type(self):
         self.assertIsInstance(timeparser.parsetime('23:44'), datetime.time)
         self.assertIsInstance(timeparser.parsedate('24.3.2013'), datetime.date)
@@ -63,9 +67,6 @@ class ParserTests(unittest.TestCase):
 
 
 class EndianTests(unittest.TestCase):
-    def tearDown(self):
-        timeparser.ENDIAN.set('l')
-
     def test_endian(self):
         endian = timeparser.ENDIAN
         endian.set('l')
@@ -87,7 +88,7 @@ class EndianTests(unittest.TestCase):
 
 
 class TodayTests(unittest.TestCase):
-    def tearDown(self):
+    def setUp(self):
         timeparser.TODAY.set()
 
     def test_endian(self):
