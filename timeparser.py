@@ -375,7 +375,7 @@ class DateFormats(BaseFormats):
             c_list = list()
             for month in self.CODE_DICT['month']:
                 c_dict['month'] = month
-                c_list.append([c_dict[k] for k in self.endian])
+                c_list.append([c_dict[k] for k in order])
             return c_list
 
         if self._figures[1]:
