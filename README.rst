@@ -48,6 +48,17 @@ How to use? ::
     datetime.datetime(2013, 4, 24, 23, 44, 5)
 
 
+Changes v0.5:
+-------------
+*deprecated:*
+    setToday, setEndian and the ENDIAN_XXX-globals will be removed.
+    Furthermore DateFormats-constructor and -config-method won't accept an
+    endian-kwarg anymore. ENDIAN will be like TODAY exclusively a global setting.
+    To change them use TODAY.set(year, month, day) and ENDIAN.set(key), while
+    key is a string: 'year', 'month' or 'day', resp. shortcuts like 'y', 'm'
+    or 'd'.
+
+
 Reporting Bugs
 --------------
 Please report bugs at github issue tracker:

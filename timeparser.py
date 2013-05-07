@@ -6,12 +6,46 @@ import re
 import subprocess
 import shlex
 
+import warnings
+warnings.simplefilter('default')
 
+
+#deprecated! For backwards-compatibility only
+LITTLE_ENDIAN = 'little'
+BIG_ENDIAN = 'big'
+MIDDLE_ENDIAN = 'middle'
+def setEndian(key):
+    warnings.warn('setEndian is deprecated; use ENDIAN.set', DeprecationWarning)
+    ENDIAN.set(key)
+
+def setToday(date=None):
+    warnings.warn('setToday is deprecated; use TODAY.set', DeprecationWarning)
+    if date: TODAY.set(date.year, date.month, date.day)
+    else: TODAY.set()
+####***####
 
 class TODAY:
+    """
+    TODAY emulates an datetime.date with an additionally set-method to change it.
+
+    The constructor don't take any arguments, for TODAY will be set to
+    datetime.date.today() on creation.
+    
+    Because datetime.date-objs are not mutable, TODAY imitates one on the
+    simplest level. Nevertheless if you need full features of an
+    datetime.date-obj use the dateobj-attr.
+    """
     def __init__(self): self.set()
 
     def set(self, *args, **kwargs):
+        """
+        Change TODAY.
+        
+        Args:
+            year (int):     year
+            month (int):    month
+            day (int):      day
+        """
         if args or kwargs: self._dateobj = datetime.date(*args, **kwargs)
         else: self._dateobj = datetime.date.today()
 
@@ -34,6 +68,17 @@ TODAY = TODAY()
 
 
 class ENDIAN:
+    """
+    ENDIAN emulates a tuple-obj, which represents the date-order.
+
+    date-order one of the following:
+        little = ('day', 'month', 'year')
+        big = ('year', 'month', 'day')
+        middle = ('month', 'day', 'year')
+
+    On construction the local default-order is guessed. But could be changed
+    with the set-method.
+    """
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
         big = ('year', 'month', 'day'),
@@ -47,7 +92,20 @@ class ENDIAN:
 
     def __repr__(self): return str(self.OPTIONS[self._key])
 
-    def set(self, key=None): self._key = self._check_key(key) or self._guess()
+    def set(self, key=None):
+        """
+        Set ENDIAN to 'little', 'big' or 'middle'.
+        
+        Args:
+            key (string):   everything that matches 'little', 'big' or 'middle'
+
+        If key is None the local-default-order is guessed.
+        """
+        self._key = self._check_key(key) or self._guess()
+
+    #deprecated:
+    def get(self, key=None): return self.OPTIONS[self._check_key(key) or self._guess()]
+    ###########
 
     @classmethod
     def _check_key(cls, key):
@@ -258,7 +316,7 @@ class DateFormats(BaseFormats):
     ALLOW_MONTH_NAME = True
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_month_name=None):
+                allow_month_name=None, endian=None):
         """
         Constructor of DateFormats.
 
@@ -274,10 +332,14 @@ class DateFormats(BaseFormats):
         if allow_month_name is None:
             self._allow_month_name = self.ALLOW_MONTH_NAME
         else: self._allow_month_name = allow_month_name
+        #deprecated:
+        if endian: self.endian = ENDIAN.get(endian)
+        else: self.endian = ENDIAN
+        ###########
         super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
-    def config(cls, allow_month_name=None, *args, **kwargs):
+    def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
         """
         Modify class-configuration.
 
@@ -288,6 +350,9 @@ class DateFormats(BaseFormats):
         *args and **kwargs will be passed to BaseFormats.config.
         """
         if not allow_month_name is None: cls.ALLOW_MONTH_NAME = allow_month_name
+        #deprecated:
+        ENDIAN.set(endian)
+        ###########
         super(DateFormats, cls).config(*args, **kwargs)
 
     def _evaluate_string(self, string):
@@ -300,19 +365,20 @@ class DateFormats(BaseFormats):
         super(DateFormats, self)._evaluate_string(string)
 
     def _get_code_list(self):
+        #self.endian is deprecated. Will be changed to the global ENDIAN.
         code_list = list()
-        code_dict = dict([(k, self.CODE_DICT[k][0]) for k in ENDIAN])
+        code_dict = dict([(k, self.CODE_DICT[k][0]) for k in self.endian])
 
         def get_month_name(order):
             c_dict = code_dict.copy()
             c_list = list()
             for month in self.CODE_DICT['month']:
                 c_dict['month'] = month
-                c_list.append([c_dict[k] for k in ENDIAN])
+                c_list.append([c_dict[k] for k in self.endian])
             return c_list
 
         if self._figures[1]:
-            incomplete = list(ENDIAN)
+            incomplete = list(self.endian)
             incomplete.remove('year')
             if self._allow_month_name: code_list.extend(get_month_name(incomplete))
             else: code_list.append([code_dict[k] for k in incomplete])
@@ -320,8 +386,8 @@ class DateFormats(BaseFormats):
         if self._figures[2]:
             for year in self.CODE_DICT['year']:
                 code_dict['year'] = year
-                if self._allow_month_name: code_list.extend(get_month_name(ENDIAN))
-                else: code_list.append([code_dict[k] for k in ENDIAN])
+                if self._allow_month_name: code_list.extend(get_month_name(self.endian))
+                else: code_list.append([code_dict[k] for k in self.endian])
 
         return code_list
 

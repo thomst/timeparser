@@ -75,6 +75,15 @@ class EndianTests(unittest.TestCase):
         endian.set('m')
         self.assertEqual(endian[0], 'month')
 
+    def test_deprecated(self):
+        endian = timeparser.ENDIAN
+        timeparser.setEndian('l')
+        self.assertEqual(endian[0], 'day')
+        timeparser.setEndian('b')
+        self.assertEqual(endian[0], 'year')
+        timeparser.setEndian('m')
+        self.assertEqual(endian[0], 'month')
+
 
 class TodayTests(unittest.TestCase):
     def tearDown(self):
@@ -86,6 +95,14 @@ class TodayTests(unittest.TestCase):
         today.set()
         self.assertEqual(today.dateobj, datetime.date.today())
         today.set(1,2,3)
+        self.assertEqual(today.dateobj, datetime.date(1,2,3))
+
+    def test_deprecated(self):
+        today = timeparser.TODAY
+        self.assertEqual(today.dateobj, datetime.date.today())
+        timeparser.setToday()
+        self.assertEqual(today.dateobj, datetime.date.today())
+        timeparser.setToday(datetime.date(1,2,3))
         self.assertEqual(today.dateobj, datetime.date(1,2,3))
 
 
