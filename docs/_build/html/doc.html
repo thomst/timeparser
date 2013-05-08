@@ -1,0 +1,287 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Dokumentation &mdash; timeparser 0.5.2 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.5.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="timeparser 0.5.2 documentation" href="index.html" />
+    <link rel="prev" title="timeparser" href="readme.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="readme.html" title="timeparser"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">timeparser 0.5.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-timeparser">
+<span id="dokumentation"></span><h1>Dokumentation<a class="headerlink" href="#module-timeparser" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="parsetime">
+<h2>parsetime<a class="headerlink" href="#parsetime" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="timeparser.parsetime">
+<tt class="descclassname">timeparser.</tt><tt class="descname">parsetime</tt><big>(</big><em>string</em>, <em>formats=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#timeparser.parsetime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string to a datetime.time-object.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>string (str):       string to be parsed
+formats (list):     list of timecode-formats</dd>
+</dl>
+<p>Parsing string is tried out with every format in formats. If formats not
+given a TimeFormats-list is used instead.
+The first format that fits is used.</p>
+<p>Return a datetime.time-object.
+Raises ValueError if string couldn&#8217;t be parsed as time.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="parsedate">
+<h2>parsedate<a class="headerlink" href="#parsedate" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="timeparser.parsedate">
+<tt class="descclassname">timeparser.</tt><tt class="descname">parsedate</tt><big>(</big><em>string</em>, <em>formats=</em><span class="optional">[</span><span class="optional">]</span>, <em>today=None</em><big>)</big><a class="headerlink" href="#timeparser.parsedate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string to a datetime.date-object.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>string (str):       string to be parsed
+formats (list):     list of timecode-formats
+today (date):</dd>
+</dl>
+<p>Parsing string is tried out with every format in formats. If formats not
+given a DateFormats-list is used instead.
+The first format that fits is used.</p>
+<p>If a year-code or a year- and a month-code is missing from the fitting format,
+values for year (and month) are complemented by the modules global TODAY.
+TODAY defaults to the actual date but can be changed with setToday.</p>
+<p>Return a datetime.date-object.
+Raises ValueError if string couldn&#8217;t be parsed as date.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="parsedatetime">
+<h2>parsedatetime<a class="headerlink" href="#parsedatetime" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="timeparser.parsedatetime">
+<tt class="descclassname">timeparser.</tt><tt class="descname">parsedatetime</tt><big>(</big><em>string</em>, <em>formats=</em><span class="optional">[</span><span class="optional">]</span>, <em>today=None</em><big>)</big><a class="headerlink" href="#timeparser.parsedatetime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string to a datetime.datetime-object.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>string (str):       string to be parsed
+formats (list):     list of timecode-formats
+today (date):</dd>
+</dl>
+<p>Parsing string is tried out with every format in formats. If formats not
+given a DatetimeFormats-list is used instead.
+The first format that fits is used.</p>
+<p>Return a datetime.datetime-object.
+Raises ValueError if string couldn&#8217;t be parsed as datetime.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="parsetimedelta">
+<h2>parsetimedelta<a class="headerlink" href="#parsetimedelta" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="timeparser.parsetimedelta">
+<tt class="descclassname">timeparser.</tt><tt class="descname">parsetimedelta</tt><big>(</big><em>string</em>, <em>key='weeks'</em><big>)</big><a class="headerlink" href="#timeparser.parsetimedelta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a string to a datetime.timedelta-object.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><p class="first">string (str):       string to be parsed
+key (str):          string that contains or is substring of a key for</p>
+<blockquote class="last">
+<div>the timedelta-kwargs.</div></blockquote>
+</dd>
+</dl>
+<p>First the string is scanned for pointers to keywords that can be used with
+the leading or following values as kwargs for datetime.timedelta.
+If no pointers are found, the key-argument determines the unit for the first
+value found within string. Following values have each the next lesser unit.</p>
+<p>For the pointers or the key-argument it is sufficient either to be a
+substring of a keyword or containing one.
+keywords are &#8216;weeks&#8217;, &#8216;days&#8217;, &#8216;hours&#8217;, &#8216;minutes&#8217; and &#8216;seconds&#8217;.</p>
+<p>Return a datetime.timedelta-object.
+Raises ValueError if string couldn&#8217;t be parsed as timedelta.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="timeformats">
+<h2>TimeFormats<a class="headerlink" href="#timeformats" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="timeparser.TimeFormats">
+<em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">TimeFormats</tt><big>(</big><em>string=None</em>, <em>seps=None</em>, <em>allow_no_sep=None</em>, <em>figures=None</em>, <em>allow_microsec=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.TimeFormats" title="Permalink to this definition">¶</a></dt>
+<dd><p>A time-formats-list that generates himself.</p>
+<dl class="docutils">
+<dt>Globals are:</dt>
+<dd>CODES = [&#8216;%H&#8217;, &#8216;%M&#8217;, &#8216;%S&#8217;, &#8216;%f&#8217;]    #codes used to produce formats
+SEPS = [&#8216;:&#8217;, &#8216; &#8216;]                   #separators used to produce formats
+MICROSEC_SEPS = [&#8216;.&#8217;, &#8216; &#8216;]          #separators microsec are added with
+ALLOW_MICROSEC = False              #allow formats with &#8216;%f&#8217;</dd>
+</dl>
+<p>SEPS and ALLOW_MICROSEC can be changed via TimeFormats.config</p>
+<dl class="classmethod">
+<dt id="timeparser.TimeFormats.config">
+<em class="property">classmethod </em><tt class="descname">config</tt><big>(</big><em>allow_microsec=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.TimeFormats.config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modify class-configuration.</p>
+<dl class="docutils">
+<dt>Kwargs:</dt>
+<dd><dl class="first last docutils">
+<dt>allow_microsec (bool):    if True also formats with &#8216;%f&#8217; for microseconds</dt>
+<dd>are produced.</dd>
+</dl>
+</dd>
+</dl>
+<p><a href="#id1"><span class="problematic" id="id2">*</span></a>args and <a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs will be passed to BaseFormats.config.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="dateformats">
+<h2>DateFormats<a class="headerlink" href="#dateformats" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="timeparser.DateFormats">
+<em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">DateFormats</tt><big>(</big><em>string=None</em>, <em>seps=None</em>, <em>allow_no_sep=None</em>, <em>figures=None</em>, <em>allow_month_name=None</em>, <em>endian=None</em><big>)</big><a class="headerlink" href="#timeparser.DateFormats" title="Permalink to this definition">¶</a></dt>
+<dd><p>A date-formats-list that generates himself.</p>
+<dl class="docutils">
+<dt>Globals are:</dt>
+<dd>CODES = [&#8216;%d&#8217;, &#8216;%m&#8217;, &#8216;%y&#8217;]          #codes used to produce formats
+SEPS = [&#8216;.&#8217;, &#8216;-&#8216;, &#8216;/&#8217;, &#8216; &#8216;]         #separators used to produce formats
+ALLOW_MONTH_NAME = True             #allow formats with codes &#8216;%b&#8217;, &#8216;%B&#8217;</dd>
+</dl>
+<p>SEPS and ALLOW_MONTH_NAME can be changed via DateFormats.config</p>
+<dl class="classmethod">
+<dt id="timeparser.DateFormats.config">
+<em class="property">classmethod </em><tt class="descname">config</tt><big>(</big><em>allow_month_name=None</em>, <em>endian=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.DateFormats.config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modify class-configuration.</p>
+<dl class="docutils">
+<dt>Kwargs:</dt>
+<dd><dl class="first last docutils">
+<dt>allow_month_name (bool):    if True also &#8216;%b&#8217; and &#8216;%B&#8217; are used to</dt>
+<dd>produce formats.</dd>
+</dl>
+</dd>
+</dl>
+<p><a href="#id5"><span class="problematic" id="id6">*</span></a>args and <a href="#id7"><span class="problematic" id="id8">**</span></a>kwargs will be passed to BaseFormats.config.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="datetimeformats">
+<h2>DatetimeFormats<a class="headerlink" href="#datetimeformats" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="timeparser.DatetimeFormats">
+<em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">DatetimeFormats</tt><big>(</big><em>string=None</em>, <em>seps=None</em>, <em>allow_no_sep=None</em>, <em>date_config={}</em>, <em>time_config={}</em><big>)</big><a class="headerlink" href="#timeparser.DatetimeFormats" title="Permalink to this definition">¶</a></dt>
+<dd><p>A date-formats-list that generates himself.</p>
+<dl class="docutils">
+<dt>Globals are:</dt>
+<dd>SEPS = [&#8216; &#8216;, &#8216;,&#8217;, &#8216;_&#8217;, &#8216;;&#8217;]         #separators used to produce formats</dd>
+</dl>
+<p>SEPS can be changed via DateFormats.config</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Dokumentation</a><ul>
+<li><a class="reference internal" href="#parsetime">parsetime</a></li>
+<li><a class="reference internal" href="#parsedate">parsedate</a></li>
+<li><a class="reference internal" href="#parsedatetime">parsedatetime</a></li>
+<li><a class="reference internal" href="#parsetimedelta">parsetimedelta</a></li>
+<li><a class="reference internal" href="#timeformats">TimeFormats</a></li>
+<li><a class="reference internal" href="#dateformats">DateFormats</a></li>
+<li><a class="reference internal" href="#datetimeformats">DatetimeFormats</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="readme.html"
+                        title="previous chapter">timeparser</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/doc.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="readme.html" title="timeparser"
+             >previous</a> |</li>
+        <li><a href="index.html">timeparser 0.5.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, thomst.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

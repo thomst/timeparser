@@ -21,8 +21,8 @@ Installation
     python setup.py install
 
 
-Documentation
--------------
+Usage
+-----
 How to use? ::
 
     >>> import timeparser
@@ -48,8 +48,8 @@ How to use? ::
     datetime.datetime(2013, 4, 24, 23, 44, 5)
 
 
-Changes v0.5:
--------------
+Changes in v0.5
+---------------
 *deprecated:*
     setToday, setEndian and the ENDIAN_XXX-globals will be removed.
     Furthermore DateFormats-constructor and -config-method won't accept an
