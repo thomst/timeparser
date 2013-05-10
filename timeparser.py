@@ -1,6 +1,74 @@
 """
-Parse strings to time-, date-, datetime- or timedelta-objects of the datetime-module.
+Parse strings to objects of :mod:`datetime`.
+
+This module intends to make string-parsing to :mod:`datetime`-objects as
+easy as possible while allowing a fine configuration about which kind of formats
+are supported:
+
+Parsing any kind of string is as easy as:
+
+    >>> date = parsedate('3 Jan 2013')
+    datetime.date(2013, 1, 3)
+
+Now suppose you don't want to allow parsing strings with literal month-names:
+
+    >>> DateFormats.config(allow_month_name=False)
+    >>> date = parsedate('3 Jan 2013')
+    ValueError: couldn't parse '3 Jan 2013' as date
+
+
+Concept
+.......
+
+While the parser-functions :func:`parsetime`, :func:`parsedate` and
+:func:`parsedatetime` just loop over a list of format-strings used with
+:meth:`datetime.datetime.strptime` to try parsing a given string, the actual
+intellegence of timeparser lies in the formats-classes (:class:`TimeFormats`,
+:class:`DateFormats`, :class:`DatetimeFormats`):
+
+The formats-classes are lists for format-strings that provides two main-features:
+They produce themselves accordingly to a set of parameters, and they are
+configurable in regard to these parameters.
+
+To create a list for a altered configuration you can either pass keyword-
+arguments to the constructor:
+
+    >>> formats = TimeFormats(seps=['-', ':', ';'], allow_microsec=True)
+
+or change the default-configuration on class-level:
+
+    >>> TimeFormats.config(seps=['-', ':', ';'], allow_microsec=True)
+    >>> formats = TimeFormats()
+
+Both will result in the same list of formats, but the former way doesn't touch
+the default-configuration.
+
+
+*There is another important thing to consider:*
+
+What if you want to allow a really generous range of formats? (In the default-
+configuration ``DateFormats()`` will produce 46 formats, while
+``DatetimeFormats()`` comes up to 1610.)
+
+Checking all these formats by calling :meth:`datetime.datetime.strptime` till one
+of them fits, could be quiet expensive. Therefore the formats-classes provides a
+way to pre-select formats accordingly to some characteristics of the string,
+that should be parsed.
+
+Just pass the string as first argument:
+
+    >>> DateFormats('3.4.2013')
+    ['%d.%m.%y', '%d.%m.%Y']
+    >>> DatetimeFormats('03.04.13_22:30')
+    ['%d.%m.%y_%H:%M', '%d.%m.%Y_%H:%M']
+
+Now regardless of a huge range of supported formats only two of them will have
+to be tried out.
+
+The pasrer-functions make use of this: calling ``parsedate('3 Jan')`` is actually
+the same as ``parsedate('3 Jan', formats=DateFormats('3 Jan'))``.
 """
+
 import datetime
 import re
 import subprocess
@@ -161,12 +229,6 @@ class BaseFormats(list):
         are accepted, while string is used to predict specific parameters that
         limit the generation of formats. This is much more performant because
         the parse-functions won't have to check too much formats.
-
-        Parameters for the generic range of formats have all broad defaults
-        (an exception is TimeFormats.ALLOW_MICROSEC which defaults to False).
-        To become a more specific range of formats either pass accordant params
-        to the constructor or use the config-class-method. The latter will change
-        the class' configuration durably.
         """
         super(BaseFormats, self).__init__()
         self._figures = figures or self.FIGURES[:]
@@ -239,35 +301,39 @@ class BaseFormats(list):
 
 class TimeFormats(BaseFormats):
     """
-    A time-formats-list that generates himself.
+    A list of time-string-formats that generates himself.
 
-    Globals are:
-        CODES = ['%H', '%M', '%S', '%f']    #codes used to produce formats
-        SEPS = [':', ' ']                   #separators used to produce formats
-        MICROSEC_SEPS = ['.', ' ']          #separators microsec are added with
-        ALLOW_MICROSEC = False              #allow formats with '%f'
+    :keyword string:            Pre-select formats for string.
+    :keyword seps:              Allowed separators for formats.
+    :keyword allow_no_sep:      Allows formats without any separator.
+    :keyword figures:           List of three booleans that predicts how many
+                                digits formats are allowed to have.
 
-    SEPS and ALLOW_MICROSEC can be changed via TimeFormats.config
+                                * figures[0]: allows a one-digit format ('%H')
+                                * figures[1]: allows two-digit-fmts (e.g. '%H:%M')
+                                * figures[2]: allows three-digit-fmts (e.g. '%H:%M:%S')
+
+    :keyword allow_microsec:    Allows formats with microseconds (%f)
+
+    :type seps:                 list
+    :type allow_no_sep:         bool
+    :type figures:              list
+    :type allow_microsec:       bool
+
+    The default configuration is:
+
+    :cvar SEPS:                 [':', ' ']
+    :cvar ALLOW_NO_SEP:         True
+    :cvar FIGURES:              [True, True, True]
+    :cvar ALLOW_MICROSEC:       False
     """
     SEPS = [':', ' ']
     CODES = ['%H', '%M', '%S', '%f']
-    MICROSEC_SEPS = ['.', ' ']
+    MICROSEC_SEPS = ['.', ' ']          #TODO: make it configurable as well
     ALLOW_MICROSEC = False
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_microsec=None, *args, **kwargs):
-        """
-        Constructor of TimeFormats.
-        
-        Kwargs:
-            string (str):       string formats are generated for
-            seps (list):        separators formats are generated with
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            figures (list):     list of three boolean that predicts how many
-                                digits the formats have.
-            allow_microsec (bool):    if True also formats with '%f' for microseconds
-                                are produced.
-        """
+                allow_microsec=None):
         if allow_microsec is None: self._allow_microsec = self.ALLOW_MICROSEC
         else: self._allow_microsec = allow_microsec
         super(TimeFormats, self).__init__(string, seps, allow_no_sep, figures)
@@ -277,11 +343,16 @@ class TimeFormats(BaseFormats):
         """
         Modify class-configuration.
 
-        Kwargs:
-            allow_microsec (bool):    if True also formats with '%f' for microseconds
-                                are produced.
+        :keyword seps:              Allowed separators for formats.
+        :keyword allow_no_sep:      Allows formats without any separator.
+        :keyword figures:           List of three booleans that predicts how many
+                                    digits formats are allowed to have.
+        :keyword allow_microsec:    Allowes formats with microseconds (%f)
 
-        *args and **kwargs will be passed to BaseFormats.config.
+        :type seps:                 list
+        :type allow_no_sep:         bool
+        :type figures:              list
+        :type allow_microsec:       bool
         """
         if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
@@ -298,14 +369,31 @@ class TimeFormats(BaseFormats):
 
 class DateFormats(BaseFormats):
     """
-    A date-formats-list that generates himself.
+    A list of date-string-formats that generates himself.
 
-    Globals are:
-        CODES = ['%d', '%m', '%y']          #codes used to produce formats
-        SEPS = ['.', '-', '/', ' ']         #separators used to produce formats
-        ALLOW_MONTH_NAME = True             #allow formats with codes '%b', '%B'
+    :keyword string:            Pre-select formats for string.
+    :keyword seps:              Allowed separators for formats.
+    :keyword allow_no_sep:      Allows formats without any separator.
+    :keyword figures:           List of three booleans that predicts how many
+                                digits formats are allowed to have.
 
-    SEPS and ALLOW_MONTH_NAME can be changed via DateFormats.config
+                                * figures[0]: allows a one-digit format ('%d')
+                                * figures[1]: allows two-digit-fmts (e.g. '%d/%m')
+                                * figures[2]: allows three-digit-fmts (e.g. '%d/%m/%y')
+
+    :keyword allow_month_name:  Allows formats with month-names (%b or %B)
+
+    :type seps:                 list
+    :type allow_no_sep:         bool
+    :type figures:              list
+    :type allow_month_name:     bool
+
+    The default configuration is:
+
+    :cvar SEPS:                 ['.', '-', '/', ' ']
+    :cvar ALLOW_NO_SEP:         True
+    :cvar FIGURES:              [True, True, True]
+    :cvar ALLOW_MONTH_NAME:     True
     """
     CODES = ['%d', '%m', '%y']
     SEPS = ['.', '-', '/', ' ']
@@ -318,18 +406,6 @@ class DateFormats(BaseFormats):
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_month_name=None, endian=None):
-        """
-        Constructor of DateFormats.
-
-        Kwargs:
-            string (str):       string formats are generated for
-            seps (list):        separators formats are generated with
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            figures (list):     list of three boolean that predicts how many
-                                digits the formats have.
-            allow_month_name (bool):    if True also '%b' and '%B' are used to
-                                        produce formats.
-        """
         if allow_month_name is None:
             self._allow_month_name = self.ALLOW_MONTH_NAME
         else: self._allow_month_name = allow_month_name
@@ -344,11 +420,16 @@ class DateFormats(BaseFormats):
         """
         Modify class-configuration.
 
-        Kwargs:
-            allow_month_name (bool):    if True also '%b' and '%B' are used to
-                                        produce formats.
+        :keyword seps:              Allowed separators for formats.
+        :keyword allow_no_sep:      Allows formats without any separator.
+        :keyword figures:           List of three booleans that predicts how many
+                                    digits formats are allowed to have.
+        :keyword allow_month_name:  Allows formats with month-names (%b or %B)
 
-        *args and **kwargs will be passed to BaseFormats.config.
+        :type seps:                 list
+        :type allow_no_sep:         bool
+        :type figures:              list
+        :type allow_month_name:     bool
         """
         if not allow_month_name is None: cls.ALLOW_MONTH_NAME = allow_month_name
         #deprecated:
@@ -361,6 +442,8 @@ class DateFormats(BaseFormats):
         Checks string for literal month-name and calls the
         super-class-_evaluate_string-method.
         """
+        #TODO: if a month-name was found, assure that no formats with %m will
+        # be produced.
         if self._allow_month_name:
             if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
         super(DateFormats, self)._evaluate_string(string)
@@ -395,30 +478,28 @@ class DateFormats(BaseFormats):
 
 class DatetimeFormats(BaseFormats):
     """
-    A date-formats-list that generates himself.
+    A list of datetime-string-formats that generates himself.
 
-    Globals are:
-        SEPS = [' ', ',', '_', ';']         #separators used to produce formats
+    :keyword string:            Pre-select formats for string.
+    :keyword seps:              Allowed separators for formats.
+    :keyword allow_no_sep:      Allows formats without any separator.
+    :keyword date_config:       kwargs :class:`DateFormats` are initialized with
+    :keyword time_config:       kwargs :class:`TimeFormats` are initialized with
 
-    SEPS can be changed via DateFormats.config
+    :type seps:                 list
+    :type allow_no_sep:         bool
+    :type date_config:          dict
+    :type time_config:          dict
+
+    The default configuration is:
+
+    :cvar SEPS:                 [' ', ',', '_', ';']
+    :cvar ALLOW_NO_SEP:         True
     """
     SEPS = [' ', ',', '_', ';']
 
     def __init__(self, string=None, seps=None, allow_no_sep=None,
                 date_config=dict(), time_config=dict()):
-        """
-        Constructor of DatetimeFormats.
-
-        Kwargs:
-            string (str):           string formats are generated for
-            seps (list):            separators formats are generated with
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            date_config (dict):     kwargs passed to the DateFormats-constructor
-            time_config (dict):     kwargs passed to the TimeFormats-constructor
-
-        DatetimeFormats._gererate calles the DateFormats- and
-        TimeFormats-constructor to combine those formats.
-        """
         self._date_config = dict(
             seps = DateFormats.SEPS,
             allow_no_sep = DateFormats.ALLOW_NO_SEP,
@@ -434,6 +515,23 @@ class DatetimeFormats(BaseFormats):
         self._date_config.update(date_config)
         self._time_config.update(time_config)
         super(DatetimeFormats, self).__init__(string, seps, allow_no_sep)
+
+    @classmethod
+    def config(self, *args, **kwargs):
+        """
+        Modify class-configuration.
+
+        :keyword seps:              Allowed separators for formats.
+        :keyword allow_no_sep:      Allows formats without any separator.
+        :keyword date_config:       kwargs :class:`DateFormats` are initialized with
+        :keyword time_config:       kwargs :class:`TimeFormats` are initialized with
+
+        :type seps:                 list
+        :type allow_no_sep:         bool
+        :type date_config:          dict
+        :type time_config:          dict
+        """
+        super(DatetimeFormats, self).config(*args, **kwargs)
 
     def _evaluate_string(self, string):
         """
@@ -496,45 +594,46 @@ class DatetimeFormats(BaseFormats):
 
 def parsetime(string, formats=list()):
     """
-    Parse a string to a datetime.time-object.
+    Parse a string to a :class:`datetime.time` -object.
 
-    Args:
-        string (str):       string to be parsed
-        formats (list):     list of timecode-formats
+    :param string:      String to be parsed.
+    :keyword formats:   List of formats-string.
+    :type formats:      list
 
-    Parsing string is tried out with every format in formats. If formats not
-    given a TimeFormats-list is used instead.
-    The first format that fits is used.
+    :rtype:             :class:`datetime.time`
+    :raises:            ValueError
 
-    Return a datetime.time-object.
-    Raises ValueError if string couldn't be parsed as time.
+    The string is tried to be parsed with every format of formats.
+    If formats not given a TimeFormats-list for the string will be created.
+    The first *succeeding* format is used.
     """
     formats = formats or TimeFormats(string=string)
     for f in formats:
         try: return datetime.datetime.strptime(string, f).time()
         except ValueError: continue
-    raise ValueError("couldn't parse %s as time" % string)
+    raise ValueError("couldn't parse '%s' as time" % string)
 
 
 def parsedate(string, formats=list(), today=None):
     """
-    Parse a string to a datetime.date-object.
+    Parse a string to a :class:`datetime.date`-object.
 
-    Args:
-        string (str):       string to be parsed
-        formats (list):     list of timecode-formats
-        today (date):
+    :param string:      String to be parsed.
+    :keyword formats:   List of formats-string.
+    :keyword today:     the date used to complement incomplete dates
+    :type formats:      list
+    :type today:        datetime.date
 
-    Parsing string is tried out with every format in formats. If formats not
-    given a DateFormats-list is used instead.
-    The first format that fits is used.
+    :rtype:             :class:`datetime.date`
+    :raises:            ValueError
 
-    If a year-code or a year- and a month-code is missing from the fitting format,
-    values for year (and month) are complemented by the modules global TODAY.
-    TODAY defaults to the actual date but can be changed with setToday.
+    The string is tried to be parsed with every format of formats.
+    If formats not given a DateFormats-list for the string will be created.
+    The first *succeeding* format is used.
 
-    Return a datetime.date-object.
-    Raises ValueError if string couldn't be parsed as date.
+    If the string will be parsed with an incomplete format (either missing the
+    year or the year and the month), the date-object will be completed by today
+    (or TODAY if today is not given).
     """
     formats = formats or DateFormats(string=string)
     today = today or TODAY
@@ -547,24 +646,29 @@ def parsedate(string, formats=list(), today=None):
             if '%m' not in f and '%b' not in f.lower():
                 date = date.replace(month=today.month)
             return date
-    raise ValueError("couldn't parse %s as date" % string)
+    raise ValueError("couldn't parse '%s' as date" % string)
 
 
 def parsedatetime(string, formats=list(), today=None):
     """
-    Parse a string to a datetime.datetime-object.
+    Parse a string to a :class:`datetime.datetime`-object.
 
-    Args:
-        string (str):       string to be parsed
-        formats (list):     list of timecode-formats
-        today (date):
+    :param string:      String to be parsed.
+    :keyword formats:   List of formats-string.
+    :keyword today:     the date used to complement incomplete dates
+    :type formats:      list
+    :type today:        datetime.datetime
 
-    Parsing string is tried out with every format in formats. If formats not
-    given a DatetimeFormats-list is used instead.
-    The first format that fits is used.
+    :rtype:             :class:`datetime.datetime`
+    :raises:            ValueError
 
-    Return a datetime.datetime-object.
-    Raises ValueError if string couldn't be parsed as datetime.
+    The string is tried to be parsed with every format of formats.
+    If formats not given a DatetimeFormats-list for the string will be created.
+    The first *succeeding* format is used.
+
+    If the string will be parsed with an incomplete format (either missing the
+    year or the year and the month), the datetime-object will be completed by today
+    (or TODAY if today is not given).
     """
     formats = formats or DatetimeFormats(string=string)
     today = today or TODAY
@@ -577,18 +681,19 @@ def parsedatetime(string, formats=list(), today=None):
             if '%m' not in f and '%b' not in f.lower():
                 dtime = dtime.replace(month=today.month)
             return dtime
-    raise ValueError("couldn't parse %s as datetime" % string)
+    raise ValueError("couldn't parse '%s' as datetime" % string)
 
 
 def parsetimedelta(string, key='weeks'):
     #TODO: rework the key-word-docstring-part.
     """
-    Parse a string to a datetime.timedelta-object.
+    Parse a string to a :class:`datetime.timedelta`-object.
 
-    Args:
-        string (str):       string to be parsed
-        key (str):          string that contains or is substring of a key for
-                            the timedelta-kwargs.
+    :param string:      String to be parsed.
+    :keyword formats:   String that contains or matches a timedelta-keyword.
+
+    :rtype:             :class:`datetime.timedelta`
+    :raises:            ValueError
 
     First the string is scanned for pointers to keywords that can be used with
     the leading or following values as kwargs for datetime.timedelta.
@@ -598,12 +703,9 @@ def parsetimedelta(string, key='weeks'):
     For the pointers or the key-argument it is sufficient either to be a
     substring of a keyword or containing one.
     keywords are 'weeks', 'days', 'hours', 'minutes' and 'seconds'.
-
-    Return a datetime.timedelta-object.
-    Raises ValueError if string couldn't be parsed as timedelta.
     """
     kws = ('weeks', 'days', 'hours', 'minutes', 'seconds')
-    msg = "couldn't parse %s as timedelta"
+    msg = "couldn't parse '%s' as timedelta"
     key_msg = "couldn't find a timedelta-key for '%s'"
 
     rkey = key.lower()

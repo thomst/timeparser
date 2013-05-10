@@ -1,36 +1,39 @@
+=============
 Dokumentation
 =============
 
-.. module:: timeparser
+.. automodule:: timeparser
 
-parsetime
----------
+Parser-functions
+================
+
 .. autofunction:: parsetime
 
-parsedate
----------
+---------------------------
+
 .. autofunction:: parsedate
 
-parsedatetime
--------------
+---------------------------
+
 .. autofunction:: parsedatetime
 
-parsetimedelta
---------------
+---------------------------
+
 .. autofunction:: parsetimedelta
 
-TimeFormats
------------
+Formats-classes
+===============
+
 .. autoclass:: TimeFormats
    :members:
 
-DateFormats
------------
+---------------------------
+
 .. autoclass:: DateFormats
    :members:
 
-DatetimeFormats
----------------
+---------------------------
+
 .. autoclass:: DatetimeFormats
    :members:
 
