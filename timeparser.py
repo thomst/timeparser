@@ -680,12 +680,11 @@ def parsetime(string, formats=list()):
     """
     Parse a string to a :class:`datetime.time` -object.
 
-    :argument string:   String to be parsed.
-    :keyword formats:   List of formats-string.
-    :type formats:      list
+    :arg str string:        String to be parsed.
+    :keyword list formats:  Optional list of formats-string.
 
-    :rtype:             :class:`datetime.time`
-    :raises:            ValueError
+    :rtype:                 :class:`datetime.time`
+    :raises:                ValueError, if string couldn't been parsed
 
     The string is tried to be parsed with every format of formats.
     If formats not given a TimeFormats-list for the string will be created.
@@ -702,14 +701,13 @@ def parsedate(string, formats=list(), today=None):
     """
     Parse a string to a :class:`datetime.date`-object.
 
-    :argument string:   String to be parsed.
-    :keyword formats:   List of formats-string.
-    :keyword today:     the date used to complement incomplete dates
-    :type formats:      list
-    :type today:        datetime.date
+    :arg str string:        String to be parsed.
+    :keyword list formats:  Optional list of formats-string.
+    :keyword today:         the date used to complement incomplete dates
+    :type today:            datetime.date
 
-    :rtype:             :class:`datetime.date`
-    :raises:            ValueError
+    :rtype:                 :class:`datetime.date`
+    :raises:                ValueError, if string couldn't been parsed
 
     The string is tried to be parsed with every format of formats.
     If formats not given a DateFormats-list for the string will be created.
@@ -737,14 +735,13 @@ def parsedatetime(string, formats=list(), today=None):
     """
     Parse a string to a :class:`datetime.datetime`-object.
 
-    :argument string:   String to be parsed.
-    :keyword formats:   List of formats-string.
-    :keyword today:     the date used to complement incomplete dates
-    :type formats:      list
-    :type today:        datetime.datetime
+    :arg str string:        String to be parsed.
+    :keyword list formats:  Optional list of formats-string.
+    :keyword today:         the date used to complement incomplete dates
+    :type today:            datetime.datetime
 
-    :rtype:             :class:`datetime.datetime`
-    :raises:            ValueError
+    :rtype:                 :class:`datetime.datetime`
+    :raises:                ValueError, if string couldn't been parsed
 
     The string is tried to be parsed with every format of formats.
     If formats not given a DatetimeFormats-list for the string will be created.
@@ -773,11 +770,11 @@ def parsetimedelta(string, key='weeks'):
     """
     Parse a string to a :class:`datetime.timedelta`-object.
 
-    :argument string:   String to be parsed.
-    :keyword formats:   String that contains or matches a timedelta-keyword.
+    :arg str string:    String to be parsed.
+    :keyword str key:   String that contains or matches a timedelta-keyword.
 
     :rtype:             :class:`datetime.timedelta`
-    :raises:            ValueError
+    :raises:            ValueError, if string couldn't been parsed
 
     First the string is scanned for pointers to keywords that can be used with
     the leading or following values as kwargs for datetime.timedelta.
