@@ -152,7 +152,7 @@ def setToday(date=None):
 class Today:
     """
     Today emulates a :class:`datetime.date`-object that could be changed through
-    :meth:`Today.set`.
+    :meth:`set`.
 
     On creation Today will be set to :meth:`datetime.date.today`.
     
@@ -203,7 +203,7 @@ class Endian:
         * middle-endian:    ``('month', 'day', 'year')``
 
     On creation a local default-order is guessed (either little- or big-endian).
-    To change it use :meth:`ENDIAN.set`.
+    To change it use :meth:`set`.
     """
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
@@ -655,9 +655,8 @@ def parsetime(string, formats=list()):
     :rtype:                 :class:`datetime.time`
     :raises:                ValueError, if string couldn't been parsed
 
-    The string is tried to be parsed with every format of formats.
-    If formats not given a TimeFormats-list for the string will be created.
-    The first *succeeding* format is used.
+    The string is tried to be parsed with every format of *formats*.
+    If *formats* not given :class:`TimeFormats`\ (string) is used.
     """
     formats = formats or TimeFormats(string=string)
     for f in formats:
@@ -672,19 +671,17 @@ def parsedate(string, formats=list(), today=None):
 
     :arg str string:        String to be parsed.
     :keyword list formats:  Optional list of formats-string.
-    :keyword today:         the date used to complement incomplete dates
+    :keyword today:         optional date
     :type today:            datetime.date
 
     :rtype:                 :class:`datetime.date`
     :raises:                ValueError, if string couldn't been parsed
 
-    The string is tried to be parsed with every format of formats.
-    If formats not given a DateFormats-list for the string will be created.
-    The first *succeeding* format is used.
+    *string* is tried to be parsed with every format of *formats*.
+    If *formats* not given :class:`DateFormats`\ (string) is used.
 
-    If the string will be parsed with an incomplete format (either missing the
-    year or the year and the month), the date-object will be completed by today
-    (or TODAY if today is not given).
+    If *string* is parsed with an incomplete format (missing year or year and
+    month), the date will be completed by *today* or :attr:`timeparser.TODAY`.
     """
     formats = formats or DateFormats(string=string)
     today = today or TODAY
@@ -706,19 +703,17 @@ def parsedatetime(string, formats=list(), today=None):
 
     :arg str string:        String to be parsed.
     :keyword list formats:  Optional list of formats-string.
-    :keyword today:         the date used to complement incomplete dates
+    :keyword today:         Optional date
     :type today:            datetime.datetime
 
     :rtype:                 :class:`datetime.datetime`
     :raises:                ValueError, if string couldn't been parsed
 
-    The string is tried to be parsed with every format of formats.
-    If formats not given a DatetimeFormats-list for the string will be created.
-    The first *succeeding* format is used.
+    *string* is tried to be parsed with every format of *formats*.
+    If *formats* not given :class:`DatetimeFormats`\ (string) is used.
 
-    If the string will be parsed with an incomplete format (either missing the
-    year or the year and the month), the datetime-object will be completed by today
-    (or TODAY if today is not given).
+    If *string* is parsed with an incomplete format (missing year or year and
+    month), the date will be completed by *today* or :attr:`timeparser.TODAY`.
     """
     formats = formats or DatetimeFormats(string=string)
     today = today or TODAY
