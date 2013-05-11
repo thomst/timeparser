@@ -1,8 +1,11 @@
 timeparser
 ==========
 
-A python-module to parse strings to time-, date-, datetime- or timedelta-objects.
-Which formats are accepted is configurable.
+Parse strings to objects of :mod:`datetime`.
+
+This module intends to make string-parsing to :mod:`datetime`-objects as
+easy as possible while allowing a fine configuration about which kind of formats
+are supported.
 
 
 Latest Version
@@ -39,9 +42,6 @@ How to use? ::
     >>> timeparser.TimeFormats.config(allow_no_sep=False)
     >>> timeparser.parsetime('234405')
     Traceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "timeparser.py", line 398, in parsetime
-        raise ValueError("couldn't parse %s as time" % string)
     ValueError: couldn't parse 234405 as time
     >>>
     >>> timeparser.parsedatetime('24-04-13_23:44:05')
