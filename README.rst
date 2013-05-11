@@ -1,9 +1,9 @@
 timeparser
 ==========
 
-Parse strings to objects of :mod:`datetime`.
+Parse strings to objects of the datetime-module.
 
-This module intends to make string-parsing to :mod:`datetime`-objects as
+This module intends to make string-parsing to objects of the datetime-module as
 easy as possible while allowing a fine configuration about which kind of formats
 are supported.
 
@@ -41,7 +41,6 @@ How to use? ::
     >>>
     >>> timeparser.TimeFormats.config(allow_no_sep=False)
     >>> timeparser.parsetime('234405')
-    Traceback (most recent call last):
     ValueError: couldn't parse 234405 as time
     >>>
     >>> timeparser.parsedatetime('24-04-13_23:44:05')
