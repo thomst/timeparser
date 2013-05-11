@@ -17,10 +17,14 @@ Now suppose you don't want to allow parsing strings with literal month-names:
     ValueError: couldn't parse '3 Jan 2013' as date
 
 Most of the time you will use `format-classes`_ only to alter their configuration.
-The `parser-functions`_ use the `format-classes`_ to recieve a list of format-strings
-and for every format they try to call :meth:`datetime.datetime.strptime` with
-the given string. As soon as the string could be parsed that way the resulting
-:mod:`datetime`-whatever-objects will be returned.
+The `parser-functions`_ (except :func:`parsetimedelta`) use the `format-classes`_
+to recieve a list of format-strings and for every format they try to call
+:meth:`datetime.datetime.strptime` with the given string. As soon as the string
+could be parsed that way the resulting :mod:`datetime`-whatever-objects will be
+returned.
+
+:func:`parsetimedelta` breaks with that concept. It don't need format-strings at
+all and has his own :func:`logic <parsetimedelta>`.
 
 A closer look at `format-classes`_
 ----------------------------------
@@ -771,19 +775,26 @@ def parsetimedelta(string, key='weeks'):
     Parse a string to a :class:`datetime.timedelta`-object.
 
     :arg str string:    String to be parsed.
-    :keyword str key:   String that contains or matches a timedelta-keyword.
+    :keyword str key:   String that contains or matches a timedelta-keyword
+                        (defaults to 'weeks').
 
     :rtype:             :class:`datetime.timedelta`
     :raises:            ValueError, if string couldn't been parsed
 
-    First the string is scanned for pointers to keywords that can be used with
-    the leading or following values as kwargs for datetime.timedelta.
-    If no pointers are found, the key-argument determines the unit for the first
-    value found within string. Following values have each the next lesser unit.
+    parsetimedelta looks for digits in *string*, that could be seperated. These
+    digits will be the arguments for :class:`datetime.timedelta`. Thereby *key*
+    is used to determine the *unit* of the first argument, which could be one of
+    the keywords for :class:`datetime.timedelta` ('weeks', 'days', 'hours',
+    'minutes', 'seconds'). The following arguments get each the next lesser
+    *unit*:
 
-    For the pointers or the key-argument it is sufficient either to be a
-    substring of a keyword or containing one.
-    keywords are 'weeks', 'days', 'hours', 'minutes' and 'seconds'.
+    >>> parsetimedelta('1, 2, 3', 'h') == datetime.timedelta(hours=1, minutes=2, seconds=3)
+    True
+
+    Another way is to just place keyword-matching literals within the string:
+    
+    >>> parsetimedelta('1h 2m 3s') == datetime.timedelta(hours=1, minutes=2, seconds=3)
+    True
     """
     kws = ('weeks', 'days', 'hours', 'minutes', 'seconds')
     msg = "couldn't parse '%s' as timedelta"
