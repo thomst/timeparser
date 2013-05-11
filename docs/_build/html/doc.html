@@ -67,17 +67,23 @@ are supported:</p>
 <span class="go">ValueError: couldn&#39;t parse &#39;3 Jan 2013&#39; as date</span>
 </pre></div>
 </div>
-<div class="section" id="concept">
-<h2>Concept<a class="headerlink" href="#concept" title="Permalink to this headline">¶</a></h2>
-<p>While the parser-functions <a class="reference internal" href="#timeparser.parsetime" title="timeparser.parsetime"><tt class="xref py py-func docutils literal"><span class="pre">parsetime()</span></tt></a>, <a class="reference internal" href="#timeparser.parsedate" title="timeparser.parsedate"><tt class="xref py py-func docutils literal"><span class="pre">parsedate()</span></tt></a> and
-<a class="reference internal" href="#timeparser.parsedatetime" title="timeparser.parsedatetime"><tt class="xref py py-func docutils literal"><span class="pre">parsedatetime()</span></tt></a> just loop over a list of format-strings used with
-<a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.datetime.strptime" title="(in Python v3.2)"><tt class="xref py py-meth docutils literal"><span class="pre">datetime.datetime.strptime()</span></tt></a> to try parsing a given string, the actual
-intellegence of timeparser lies in the formats-classes (<a class="reference internal" href="#timeparser.TimeFormats" title="timeparser.TimeFormats"><tt class="xref py py-class docutils literal"><span class="pre">TimeFormats</span></tt></a>,
-<a class="reference internal" href="#timeparser.DateFormats" title="timeparser.DateFormats"><tt class="xref py py-class docutils literal"><span class="pre">DateFormats</span></tt></a>, <a class="reference internal" href="#timeparser.DatetimeFormats" title="timeparser.DatetimeFormats"><tt class="xref py py-class docutils literal"><span class="pre">DatetimeFormats</span></tt></a>):</p>
-<p>The formats-classes are lists for format-strings that provides two main-features:
-They produce themselves accordingly to a set of parameters, and they are
-configurable in regard to these parameters.</p>
-<p>To create a list for a altered configuration you can either pass keyword-
+<p>Most of the time you will use <a class="reference internal" href="#format-classes">format-classes</a> only to alter their configuration.
+The <a class="reference internal" href="#parser-functions">parser-functions</a> use the <a class="reference internal" href="#format-classes">format-classes</a> to recieve a list of format-strings
+and for every format they try to call <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.datetime.strptime" title="(in Python v3.2)"><tt class="xref py py-meth docutils literal"><span class="pre">datetime.datetime.strptime()</span></tt></a> with
+the given string. As soon as the string could be parsed that way the resulting
+<a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime" title="(in Python v3.2)"><tt class="xref py py-mod docutils literal"><span class="pre">datetime</span></tt></a>-whatever-objects will be returned.</p>
+<div class="section" id="a-closer-look-at-format-classes">
+<h2>A closer look at <a class="reference internal" href="#format-classes">format-classes</a><a class="headerlink" href="#a-closer-look-at-format-classes" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><a class="reference internal" href="#format-classes">Format-classes</a> are actual <a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><tt class="xref py py-obj docutils literal"><span class="pre">list</span></tt></a>-types that provides two main-features:</dt>
+<dd><ul class="first last simple">
+<li>They produce themselves as lists of format-strings accordingly to a set of
+parameters,</li>
+<li>and they are configurable in regard to these parameters.</li>
+</ul>
+</dd>
+</dl>
+<p>To create a list with an altered configuration you can either pass keyword-
 arguments to the constructor:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">formats</span> <span class="o">=</span> <span class="n">TimeFormats</span><span class="p">(</span><span class="n">seps</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="s">&#39;;&#39;</span><span class="p">],</span> <span class="n">allow_microsec</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre></div>
@@ -89,28 +95,93 @@ arguments to the constructor:</p>
 </div>
 <p>Both will result in the same list of formats, but the former way doesn&#8217;t touch
 the default-configuration.</p>
-<p><em>There is another important thing to consider:</em></p>
-<p>What if you want to allow a really generous range of formats? (In the default-
-configuration <tt class="docutils literal"><span class="pre">DateFormats()</span></tt> will produce 46 formats, while
-<tt class="docutils literal"><span class="pre">DatetimeFormats()</span></tt> comes up to 1610.)</p>
-<p>Checking all these formats by calling <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.datetime.strptime" title="(in Python v3.2)"><tt class="xref py py-meth docutils literal"><span class="pre">datetime.datetime.strptime()</span></tt></a> till one
-of them fits, could be quiet expensive. Therefore the formats-classes provides a
-way to pre-select formats accordingly to some characteristics of the string,
-that should be parsed.</p>
-<p>Just pass the string as first argument:</p>
+<p>And they provide another important feature:</p>
+<p>In the default-configuration <tt class="docutils literal"><span class="pre">DateFormats()</span></tt> will produce <tt class="docutils literal"><span class="pre">46</span></tt> formats, while
+<tt class="docutils literal"><span class="pre">DatetimeFormats()</span></tt> comes up to <tt class="docutils literal"><span class="pre">1610</span></tt>. Consider you have all these formats
+the <a class="reference internal" href="#parser-functions">parser-functions</a> have to loop over. This could be quit expensive. Therefore the
+<a class="reference internal" href="#format-classes">format-classes</a> are able to pre-select formats accordingly to the characteristics
+of the string, that should be parsed:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">DateFormats</span><span class="p">(</span><span class="s">&#39;3.4.2013&#39;</span><span class="p">)</span>
 <span class="go">[&#39;%d.%m.%y&#39;, &#39;%d.%m.%Y&#39;]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">DatetimeFormats</span><span class="p">(</span><span class="s">&#39;03.04.13_22:30&#39;</span><span class="p">)</span>
 <span class="go">[&#39;%d.%m.%y_%H:%M&#39;, &#39;%d.%m.%Y_%H:%M&#39;]</span>
 </pre></div>
 </div>
-<p>Now regardless of a huge range of supported formats only two of them will have
-to be tried out.</p>
-<p>The pasrer-functions make use of this: calling <tt class="docutils literal"><span class="pre">parsedate('3</span> <span class="pre">Jan')</span></tt> is actually
+<p>You see that passing a string as first argument to the constructor will result
+in a very reduced list of format-strings (while not touching the generell range
+of supported formats.)</p>
+<p>The <a class="reference internal" href="#parser-functions">parser-functions</a> make use of this: calling <tt class="docutils literal"><span class="pre">parsedate('3</span> <span class="pre">Jan')</span></tt> is actually
 the same as <tt class="docutils literal"><span class="pre">parsedate('3</span> <span class="pre">Jan',</span> <span class="pre">formats=DateFormats('3</span> <span class="pre">Jan'))</span></tt>.</p>
 </div>
+<div class="section" id="date-completition-and-endianness">
+<h2>Date-completition and Endianness<a class="headerlink" href="#date-completition-and-endianness" title="Permalink to this headline">¶</a></h2>
+<dl class="attribute">
+<dt id="timeparser.timeparser.TODAY">
+<tt class="descclassname">timeparser.</tt><tt class="descname">TODAY</tt><a class="headerlink" href="#timeparser.timeparser.TODAY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>TODAY is an instance of <a class="reference internal" href="#timeparser.Today" title="timeparser.Today"><tt class="xref py py-class docutils literal"><span class="pre">Today</span></tt></a> and is used to complement dates that were
+parsed with an incomplete format-string:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">TODAY</span>
+<span class="go">TODAY(2013, 5, 9)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parsedate</span><span class="p">(</span><span class="s">&#39;20 Apr&#39;</span><span class="p">)</span>
+<span class="go">datetime.date(2013, 4, 20)</span>
+</pre></div>
+</div>
+<p>or even:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">TODAY</span>
+<span class="go">TODAY(2013, 5, 9)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parsedate</span><span class="p">(</span><span class="s">&#39;20&#39;</span><span class="p">)</span>
+<span class="go">datetime.date(2013, 5, 20)</span>
+</pre></div>
+</div>
+<p>TODAY defaults to <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.date.today" title="(in Python v3.2)"><tt class="xref py py-meth docutils literal"><span class="pre">datetime.date.today()</span></tt></a>, but can be changed through
+<a class="reference internal" href="#timeparser.Today.set" title="timeparser.Today.set"><tt class="xref py py-meth docutils literal"><span class="pre">Today.set()</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">TODAY</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parsedate</span><span class="p">(</span><span class="s">&#39;20&#39;</span><span class="p">)</span>
+<span class="go">datetime.date(2000, 1, 20)</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+<dl class="attribute">
+<dt id="timeparser.timeparser.ENDIAN">
+<tt class="descclassname">timeparser.</tt><tt class="descname">ENDIAN</tt><a class="headerlink" href="#timeparser.timeparser.ENDIAN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="docutils">
+<dt>In generell dates could have one of three orders:</dt>
+<dd><ul class="first last simple">
+<li>little-endian:    <em>day, month, year</em></li>
+<li>big-endian:       <em>year, month, day</em></li>
+<li>middle-endian:    <em>month, day, year</em></li>
+</ul>
+</dd>
+</dl>
+<p>ENDIAN is an instance of <a class="reference internal" href="#timeparser.Endian" title="timeparser.Endian"><tt class="xref py py-class docutils literal"><span class="pre">Endian</span></tt></a> and defines the order that should be
+applied:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">ENDIAN</span>
+<span class="go">(&#39;day&#39;, &#39;month&#39;, &#39;year&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parsedate</span><span class="p">(</span><span class="s">&#39;26/4/13&#39;</span><span class="p">)</span>
+<span class="go">datetime.date(2013, 4, 26)</span>
+</pre></div>
+</div>
+<p>On creation a local-default-order is guessed, but could be changed through
+<a class="reference internal" href="#timeparser.Endian.set" title="timeparser.Endian.set"><tt class="xref py py-meth docutils literal"><span class="pre">Endian.set()</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">ENDIAN</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;big&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ENDIAN</span>
+<span class="go">(&#39;year&#39;, &#39;month&#39;, &#39;day&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parsedate</span><span class="p">(</span><span class="s">&#39;26/4/13&#39;</span><span class="p">)</span>
+<span class="go">datetime.date(2026, 4, 13)</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Guessing the local default is in a provisional state and a middle-endian-
+order is not regarded at all.</p>
+</div>
+</div>
 <div class="section" id="parser-functions">
-<h2>Parser-functions<a class="headerlink" href="#parser-functions" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Parser-functions<a class="headerlink" href="#parser-functions" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="timeparser.parsetime">
 <tt class="descclassname">timeparser.</tt><tt class="descname">parsetime</tt><big>(</big><em>string</em>, <em>formats=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#timeparser.parsetime" title="Permalink to this definition">¶</a></dt>
@@ -235,8 +306,8 @@ keywords are &#8216;weeks&#8217;, &#8216;days&#8217;, &#8216;hours&#8217;, &#821
 </dd></dl>
 
 </div>
-<div class="section" id="formats-classes">
-<h2>Formats-classes<a class="headerlink" href="#formats-classes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="format-classes">
+<span id="id2"></span><h2>Format-classes<a class="headerlink" href="#format-classes" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="timeparser.TimeFormats">
 <em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">TimeFormats</tt><big>(</big><em>string=None</em>, <em>seps=None</em>, <em>allow_no_sep=None</em>, <em>figures=None</em>, <em>allow_microsec=None</em><big>)</big><a class="headerlink" href="#timeparser.TimeFormats" title="Permalink to this definition">¶</a></dt>
@@ -246,38 +317,47 @@ keywords are &#8216;weeks&#8217;, &#8216;days&#8217;, &#8216;hours&#8217;, &#821
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>string</strong> &#8211; Pre-select formats for string.</li>
+<li><strong>string</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#str" title="(in Python v3.2)"><em>str</em></a>) &#8211; Pre-select formats for string.</li>
 <li><strong>seps</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; Allowed separators for formats.</li>
 <li><strong>allow_no_sep</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats without any separator.</li>
-<li><strong>figures</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; <p>List of three booleans that predicts how many
-digits formats are allowed to have.</p>
-<ul>
-<li>figures[0]: allows a one-digit format (&#8216;%H&#8217;)</li>
-<li>figures[1]: allows two-digit-fmts (e.g. &#8216;%H:%M&#8217;)</li>
-<li>figures[2]: allows three-digit-fmts (e.g. &#8216;%H:%M:%S&#8217;)</li>
-</ul>
-</li>
-<li><strong>allow_microsec</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats with microseconds (%f)</li>
+<li><strong>figures</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; List of three booleans.</li>
+<li><strong>allow_microsec</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats with microseconds (%f).</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p>The default configuration is:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>SEPS</strong> &#8211; [&#8216;:&#8217;, &#8216; &#8216;]</li>
-<li><strong>ALLOW_NO_SEP</strong> &#8211; True</li>
-<li><strong>FIGURES</strong> &#8211; [True, True, True]</li>
-<li><strong>ALLOW_MICROSEC</strong> &#8211; False</li>
+<dl class="attribute">
+<dt>
+<tt class="descname">SEPS:               [':', ' ']</tt></dt>
+<dd><p>A list of separators, formats are produced with.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">ALLOW_NO_SEP:       True</tt></dt>
+<dd><p>Allows formats without any separator (&#8216;%H%M%S&#8217;)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">FIGURES:            [True, True, True]</tt></dt>
+<dd><p>List of three booleans that predicts how many digits formats are allowed
+to have:</p>
+<ul class="simple">
+<li>figures[0]: Allows the one-digit format &#8216;%H&#8217;.</li>
+<li>figures[1]: Allows two-digit-formats like &#8216;%H:%M&#8217;.</li>
+<li>figures[2]: Allows three-digit-formats like &#8216;%H:%M:%S&#8217;.</li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">ALLOW_MICROSEC:     False</tt></dt>
+<dd><p>Allows formats with microseconds (%f)</p>
+</dd></dl>
+
 <dl class="classmethod">
 <dt id="timeparser.TimeFormats.config">
 <em class="property">classmethod </em><tt class="descname">config</tt><big>(</big><em>allow_microsec=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.TimeFormats.config" title="Permalink to this definition">¶</a></dt>
@@ -311,17 +391,10 @@ digits formats are allowed to have.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>string</strong> &#8211; Pre-select formats for string.</li>
+<li><strong>string</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#str" title="(in Python v3.2)"><em>str</em></a>) &#8211; Pre-select formats for string.</li>
 <li><strong>seps</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; Allowed separators for formats.</li>
 <li><strong>allow_no_sep</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats without any separator.</li>
-<li><strong>figures</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; <p>List of three booleans that predicts how many
-digits formats are allowed to have.</p>
-<ul>
-<li>figures[0]: allows a one-digit format (&#8216;%d&#8217;)</li>
-<li>figures[1]: allows two-digit-fmts (e.g. &#8216;%d/%m&#8217;)</li>
-<li>figures[2]: allows three-digit-fmts (e.g. &#8216;%d/%m/%y&#8217;)</li>
-</ul>
-</li>
+<li><strong>figures</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; List of three booleans.</li>
 <li><strong>allow_month_name</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats with month-names (%b or %B)</li>
 </ul>
 </td>
@@ -329,20 +402,36 @@ digits formats are allowed to have.</p>
 </tbody>
 </table>
 <p>The default configuration is:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>SEPS</strong> &#8211; [&#8216;.&#8217;, &#8216;-&#8216;, &#8216;/&#8217;, &#8216; &#8216;]</li>
-<li><strong>ALLOW_NO_SEP</strong> &#8211; True</li>
-<li><strong>FIGURES</strong> &#8211; [True, True, True]</li>
-<li><strong>ALLOW_MONTH_NAME</strong> &#8211; True</li>
+<dl class="attribute">
+<dt>
+<tt class="descname">SEPS:               ['.', '-', '/', ' ']</tt></dt>
+<dd><p>A list of separators, formats are produced with.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">ALLOW_NO_SEP:       True</tt></dt>
+<dd><p>Allows formats without any separator (&#8216;%d%m%y&#8217;)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">FIGURES:            [True, True, True]</tt></dt>
+<dd><p>List of three booleans that predicts how many digits formats are allowed
+to have:</p>
+<ul class="simple">
+<li>figures[0]: Allows the one-digit format &#8216;%d&#8217;.</li>
+<li>figures[1]: Allows two-digit-formats like &#8216;%d/%m&#8217;.</li>
+<li>figures[2]: Allows three-digit-formats like &#8216;%d/%m/%y&#8217;.</li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">ALLOW_MONTH_NAME:   True</tt></dt>
+<dd><p>Allows formats with literal month-names (%b or %B)</p>
+</dd></dl>
+
 <dl class="classmethod">
 <dt id="timeparser.DateFormats.config">
 <em class="property">classmethod </em><tt class="descname">config</tt><big>(</big><em>allow_month_name=None</em>, <em>endian=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.DateFormats.config" title="Permalink to this definition">¶</a></dt>
@@ -376,7 +465,7 @@ digits formats are allowed to have.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>string</strong> &#8211; Pre-select formats for string.</li>
+<li><strong>string</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#str" title="(in Python v3.2)"><em>str</em></a>) &#8211; Pre-select formats for string.</li>
 <li><strong>seps</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#list" title="(in Python v3.2)"><em>list</em></a>) &#8211; Allowed separators for formats.</li>
 <li><strong>allow_no_sep</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#bool" title="(in Python v3.2)"><em>bool</em></a>) &#8211; Allows formats without any separator.</li>
 <li><strong>date_config</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/stdtypes.html#dict" title="(in Python v3.2)"><em>dict</em></a>) &#8211; kwargs <a class="reference internal" href="#timeparser.DateFormats" title="timeparser.DateFormats"><tt class="xref py py-class docutils literal"><span class="pre">DateFormats</span></tt></a> are initialized with</li>
@@ -387,18 +476,18 @@ digits formats are allowed to have.</li>
 </tbody>
 </table>
 <p>The default configuration is:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>SEPS</strong> &#8211; [&#8216; &#8216;, &#8216;,&#8217;, &#8216;_&#8217;, &#8216;;&#8217;]</li>
-<li><strong>ALLOW_NO_SEP</strong> &#8211; True</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
+<dl class="attribute">
+<dt>
+<tt class="descname">SEPS:               [' ', ',', '_', ';']</tt></dt>
+<dd><p>A list of separators, formats are produced with.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt>
+<tt class="descname">ALLOW_NO_SEP:       True</tt></dt>
+<dd><p>Allows formats without any separator (&#8216;%d%m%H%M&#8217;)</p>
+</dd></dl>
+
 <dl class="classmethod">
 <dt id="timeparser.DatetimeFormats.config">
 <em class="property">classmethod </em><tt class="descname">config</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.DatetimeFormats.config" title="Permalink to this definition">¶</a></dt>
@@ -422,6 +511,92 @@ digits formats are allowed to have.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="endian-and-today">
+<h2>Endian and Today<a class="headerlink" href="#endian-and-today" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="timeparser.Endian">
+<em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">Endian</tt><a class="headerlink" href="#timeparser.Endian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Endian emulates a tuple, which represents the order of a date.</p>
+<p>Dates can be ordered in three different ways:</p>
+<blockquote>
+<div><ul class="simple">
+<li>little-endian:    <tt class="docutils literal"><span class="pre">('day',</span> <span class="pre">'month',</span> <span class="pre">'year')</span></tt></li>
+<li>big-endian:       <tt class="docutils literal"><span class="pre">('year',</span> <span class="pre">'month',</span> <span class="pre">'day')</span></tt></li>
+<li>middle-endian:    <tt class="docutils literal"><span class="pre">('month',</span> <span class="pre">'day',</span> <span class="pre">'year')</span></tt></li>
+</ul>
+</div></blockquote>
+<p>On creation a local default-order is guessed (either little- or big-endian).
+To change it use <tt class="xref py py-meth docutils literal"><span class="pre">ENDIAN.set()</span></tt>.</p>
+<dl class="method">
+<dt id="timeparser.Endian.set">
+<tt class="descname">set</tt><big>(</big><em>key=None</em><big>)</big><a class="headerlink" href="#timeparser.Endian.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set ENDIAN to little-, big- or middle-endian.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>str or None</em>) &#8211; A string matching &#8216;little&#8217;, &#8216;big&#8217; or &#8216;middle&#8217;.</td>
+</tr>
+</tbody>
+</table>
+<p>If key is None the local-default-order is guessed.</p>
+</dd></dl>
+
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="class">
+<dt id="timeparser.Today">
+<em class="property">class </em><tt class="descclassname">timeparser.</tt><tt class="descname">Today</tt><a class="headerlink" href="#timeparser.Today" title="Permalink to this definition">¶</a></dt>
+<dd><p>Today emulates a <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.date" title="(in Python v3.2)"><tt class="xref py py-class docutils literal"><span class="pre">datetime.date</span></tt></a>-object that could be changed through
+<a class="reference internal" href="#timeparser.Today.set" title="timeparser.Today.set"><tt class="xref py py-meth docutils literal"><span class="pre">Today.set()</span></tt></a>.</p>
+<p>On creation Today will be set to <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.date.today" title="(in Python v3.2)"><tt class="xref py py-meth docutils literal"><span class="pre">datetime.date.today()</span></tt></a>.</p>
+<p>Because <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.date" title="(in Python v3.2)"><tt class="xref py py-obj docutils literal"><span class="pre">datetime.date</span></tt></a>-objects are not mutable (but Today-instance has
+to be), Today imitates a <a class="reference external" href="http://docs.python.org/3.2/library/datetime.html#datetime.date" title="(in Python v3.2)"><tt class="xref py py-obj docutils literal"><span class="pre">datetime.date</span></tt></a> just saving one as
+<a class="reference internal" href="#timeparser.Today.dateobj" title="timeparser.Today.dateobj"><tt class="xref py py-attr docutils literal"><span class="pre">Today.dateobj</span></tt></a> and let <a class="reference internal" href="#timeparser.Today.year" title="timeparser.Today.year"><tt class="xref py py-attr docutils literal"><span class="pre">Today.year</span></tt></a>, <a class="reference internal" href="#timeparser.Today.month" title="timeparser.Today.month"><tt class="xref py py-attr docutils literal"><span class="pre">Today.month</span></tt></a> and
+<a class="reference internal" href="#timeparser.Today.day" title="timeparser.Today.day"><tt class="xref py py-attr docutils literal"><span class="pre">Today.day</span></tt></a> returning its values.</p>
+<dl class="method">
+<dt id="timeparser.Today.set">
+<tt class="descname">set</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#timeparser.Today.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change TODAY.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>year</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#int" title="(in Python v3.2)"><em>int</em></a>) &#8211; year</li>
+<li><strong>month</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#int" title="(in Python v3.2)"><em>int</em></a>) &#8211; month</li>
+<li><strong>day</strong> (<a class="reference external" href="http://docs.python.org/3.2/library/functions.html#int" title="(in Python v3.2)"><em>int</em></a>) &#8211; day</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="timeparser.Today.dateobj">
+<tt class="descname">dateobj</tt><a class="headerlink" href="#timeparser.Today.dateobj" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="timeparser.Today.year">
+<tt class="descname">year</tt><a class="headerlink" href="#timeparser.Today.year" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="timeparser.Today.month">
+<tt class="descname">month</tt><a class="headerlink" href="#timeparser.Today.month" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="timeparser.Today.day">
+<tt class="descname">day</tt><a class="headerlink" href="#timeparser.Today.day" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
 </div>
 
 
@@ -433,9 +608,11 @@ digits formats are allowed to have.</li>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Dokumentation</a><ul>
-<li><a class="reference internal" href="#concept">Concept</a></li>
+<li><a class="reference internal" href="#a-closer-look-at-format-classes">A closer look at format-classes</a></li>
+<li><a class="reference internal" href="#date-completition-and-endianness">Date-completition and Endianness</a></li>
 <li><a class="reference internal" href="#parser-functions">Parser-functions</a></li>
-<li><a class="reference internal" href="#formats-classes">Formats-classes</a></li>
+<li><a class="reference internal" href="#format-classes">Format-classes</a></li>
+<li><a class="reference internal" href="#endian-and-today">Endian and Today</a></li>
 </ul>
 </li>
 </ul>

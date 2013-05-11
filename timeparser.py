@@ -16,21 +16,21 @@ Now suppose you don't want to allow parsing strings with literal month-names:
     >>> date = parsedate('3 Jan 2013')
     ValueError: couldn't parse '3 Jan 2013' as date
 
+Most of the time you will use `format-classes`_ only to alter their configuration.
+The `parser-functions`_ use the `format-classes`_ to recieve a list of format-strings
+and for every format they try to call :meth:`datetime.datetime.strptime` with
+the given string. As soon as the string could be parsed that way the resulting
+:mod:`datetime`-whatever-objects will be returned.
 
-Concept
-.......
+A closer look at `format-classes`_
+----------------------------------
 
-While the parser-functions :func:`parsetime`, :func:`parsedate` and
-:func:`parsedatetime` just loop over a list of format-strings used with
-:meth:`datetime.datetime.strptime` to try parsing a given string, the actual
-intellegence of timeparser lies in the formats-classes (:class:`TimeFormats`,
-:class:`DateFormats`, :class:`DatetimeFormats`):
+`Format-classes`_ are actual :obj:`list`-types that provides two main-features:
+    * They produce themselves as lists of format-strings accordingly to a set of
+      parameters,
+    * and they are configurable in regard to these parameters.
 
-The formats-classes are lists for format-strings that provides two main-features:
-They produce themselves accordingly to a set of parameters, and they are
-configurable in regard to these parameters.
-
-To create a list for a altered configuration you can either pass keyword-
+To create a list with an altered configuration you can either pass keyword-
 arguments to the constructor:
 
     >>> formats = TimeFormats(seps=['-', ':', ';'], allow_microsec=True)
@@ -43,30 +43,82 @@ or change the default-configuration on class-level:
 Both will result in the same list of formats, but the former way doesn't touch
 the default-configuration.
 
+And they provide another important feature:
 
-*There is another important thing to consider:*
-
-What if you want to allow a really generous range of formats? (In the default-
-configuration ``DateFormats()`` will produce 46 formats, while
-``DatetimeFormats()`` comes up to 1610.)
-
-Checking all these formats by calling :meth:`datetime.datetime.strptime` till one
-of them fits, could be quiet expensive. Therefore the formats-classes provides a
-way to pre-select formats accordingly to some characteristics of the string,
-that should be parsed.
-
-Just pass the string as first argument:
+In the default-configuration ``DateFormats()`` will produce ``46`` formats, while
+``DatetimeFormats()`` comes up to ``1610``. Consider you have all these formats
+the `parser-functions`_ have to loop over. This could be quit expensive. Therefore the
+`format-classes`_ are able to pre-select formats accordingly to the characteristics
+of the string, that should be parsed:
 
     >>> DateFormats('3.4.2013')
     ['%d.%m.%y', '%d.%m.%Y']
     >>> DatetimeFormats('03.04.13_22:30')
     ['%d.%m.%y_%H:%M', '%d.%m.%Y_%H:%M']
 
-Now regardless of a huge range of supported formats only two of them will have
-to be tried out.
+You see that passing a string as first argument to the constructor will result
+in a very reduced list of format-strings (while not touching the generell range
+of supported formats.)
 
-The pasrer-functions make use of this: calling ``parsedate('3 Jan')`` is actually
+The `parser-functions`_ make use of this: calling ``parsedate('3 Jan')`` is actually
 the same as ``parsedate('3 Jan', formats=DateFormats('3 Jan'))``.
+
+Date-completition and Endianness
+--------------------------------
+.. attribute:: timeparser.TODAY
+
+TODAY is an instance of :class:`Today` and is used to complement dates that were
+parsed with an incomplete format-string:
+
+    >>> TODAY
+    TODAY(2013, 5, 9)
+    >>> parsedate('20 Apr')
+    datetime.date(2013, 4, 20)
+
+or even:
+
+    >>> TODAY
+    TODAY(2013, 5, 9)
+    >>> parsedate('20')
+    datetime.date(2013, 5, 20)
+
+TODAY defaults to :meth:`datetime.date.today`, but can be changed through
+:meth:`Today.set`:
+
+    >>> TODAY.set(2000, 1, 1)
+    >>> parsedate('20')
+    datetime.date(2000, 1, 20)
+
+-------------------------------------------------------------------------------
+
+.. attribute:: timeparser.ENDIAN
+
+In generell dates could have one of three orders:
+    * little-endian:    *day, month, year*
+    * big-endian:       *year, month, day*
+    * middle-endian:    *month, day, year*
+
+ENDIAN is an instance of :class:`Endian` and defines the order that should be
+applied:
+
+    >>> ENDIAN
+    ('day', 'month', 'year')
+    >>> parsedate('26/4/13')
+    datetime.date(2013, 4, 26)
+
+On creation a local-default-order is guessed, but could be changed through
+:meth:`Endian.set`:
+
+    >>> ENDIAN.set('big')
+    >>> ENDIAN
+    ('year', 'month', 'day')
+    >>> parsedate('26/4/13')
+    datetime.date(2026, 4, 13)
+
+.. warning::
+
+    Guessing the local default is in a provisional state and a middle-endian-
+    order is not regarded at all.
 """
 
 import datetime
@@ -93,27 +145,27 @@ def setToday(date=None):
     else: TODAY.set()
 ####***####
 
-class TODAY:
+class Today:
     """
-    TODAY emulates an datetime.date with an additionally set-method to change it.
+    Today emulates a :class:`datetime.date`-object that could be changed through
+    :meth:`Today.set`.
 
-    The constructor don't take any arguments, for TODAY will be set to
-    datetime.date.today() on creation.
+    On creation Today will be set to :meth:`datetime.date.today`.
     
-    Because datetime.date-objs are not mutable, TODAY imitates one on the
-    simplest level. Nevertheless if you need full features of an
-    datetime.date-obj use the dateobj-attr.
+    Because :obj:`datetime.date`-objects are not mutable (but Today-instance has
+    to be), Today imitates a :obj:`datetime.date` just saving one as
+    :attr:`Today.dateobj` and let :attr:`Today.year`, :attr:`Today.month` and
+    :attr:`Today.day` returning its values.
     """
     def __init__(self): self.set()
 
     def set(self, *args, **kwargs):
         """
         Change TODAY.
-        
-        Args:
-            year (int):     year
-            month (int):    month
-            day (int):      day
+
+        :arg int year:      year
+        :arg int month:     month
+        :arg int day:       day
         """
         if args or kwargs: self._dateobj = datetime.date(*args, **kwargs)
         else: self._dateobj = datetime.date.today()
@@ -133,20 +185,21 @@ class TODAY:
     def __repr__(self):
         return 'TODAY(%s, %s, %s)' % (self.year, self.month, self.day)
 
-TODAY = TODAY()
+TODAY = Today()
 
 
-class ENDIAN:
+class Endian:
     """
-    ENDIAN emulates a tuple-obj, which represents the date-order.
+    Endian emulates a tuple, which represents the order of a date.
 
-    date-order one of the following:
-        little = ('day', 'month', 'year')
-        big = ('year', 'month', 'day')
-        middle = ('month', 'day', 'year')
+    Dates can be ordered in three different ways:
+    
+        * little-endian:    ``('day', 'month', 'year')``
+        * big-endian:       ``('year', 'month', 'day')``
+        * middle-endian:    ``('month', 'day', 'year')``
 
-    On construction the local default-order is guessed. But could be changed
-    with the set-method.
+    On creation a local default-order is guessed (either little- or big-endian).
+    To change it use :meth:`ENDIAN.set`.
     """
     OPTIONS = dict(
         little = ('day', 'month', 'year'),
@@ -163,10 +216,10 @@ class ENDIAN:
 
     def set(self, key=None):
         """
-        Set ENDIAN to 'little', 'big' or 'middle'.
-        
-        Args:
-            key (string):   everything that matches 'little', 'big' or 'middle'
+        Set ENDIAN to little-, big- or middle-endian.
+
+        :arg key:       A string matching 'little', 'big' or 'middle'.
+        :type key:      str or None
 
         If key is None the local-default-order is guessed.
         """
@@ -195,41 +248,35 @@ class ENDIAN:
         if int(one) == datetime.date.today().year: return 'big'
         else: return 'little'
 
-ENDIAN = ENDIAN()
+ENDIAN = Endian()
 
 
 class BaseFormats(list):
     """
-    A list as base-class for the format-classes.
-    Format-classes are lists that generates themself as a list of formats.
+    Base-class for format-classes; inherit from :class:`list`.
 
-    These globals are defined:
-        ALLOW_NO_SEP = True             #allows formats without separators
-        FIGURES = [True, True, True]    #allows formats with one, two and three
-                                        #codes ('%d', '%d.%m' and '%d.%m.%y')
+    :keyword string:            Pre-select formats for string.
+    :keyword seps:              Allowed separators for formats.
+    :keyword allow_no_sep:      Allows formats without any separator.
+    :keyword figures:           List of three booleans that predicts how many
+                                digits formats are allowed to have.
 
-    They can be changed via the config-classmethod.
+                                * figures[0]: allows a one-digit format ('%H')
+                                * figures[1]: allows two-digit-fmts (e.g. '%H:%M')
+                                * figures[2]: allows three-digit-fmts (e.g. '%H:%M:%S')
+
+    :type seps:                 list
+    :type allow_no_sep:         bool
+    :type figures:              list
+
+    The default configuration is:
+
+    :cvar ALLOW_NO_SEP:         True
+    :cvar FIGURES:              [True, True, True]
     """
-    FIGURES = [True, True, True]
     ALLOW_NO_SEP = True
+    FIGURES = [True, True, True]
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
-        """
-        Constructor of BaseFormats.
-        
-        Kwargs:
-            string (str):       string formats are generated for
-            seps (list):        separators formats are generated with
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            figures (list):     list of three boolean that predicts how many
-                                single codes a format may have.
-                                E.g.: [True, False, True] for date-formats could
-                                be '%d' and '%d.%m.%y' but not '%d.%m'.
-
-        seps, figures and allow_no_sep determine the generic range of formats that
-        are accepted, while string is used to predict specific parameters that
-        limit the generation of formats. This is much more performant because
-        the parse-functions won't have to check too much formats.
-        """
         super(BaseFormats, self).__init__()
         self._figures = figures or self.FIGURES[:]
         if isinstance(seps, list): self._seps = seps[:]
@@ -242,16 +289,16 @@ class BaseFormats(list):
     @classmethod
     def config(cls, seps=None, allow_no_sep=None, figures=None):
         """
-        Modify the configuration of the class.
+        Modify class-configuration.
 
-        Kwargs:
-            seps (list):        separators formats are generated with
-            allow_no_sep (bool):    allows formats without separators ('%d%m%y')
-            figures (list):     list of three boolean that predicts how many
-                                digits the formats have.
+        :keyword seps:              Allowed separators for formats.
+        :keyword allow_no_sep:      Allows formats without any separator.
+        :keyword figures:           List of three booleans that predicts how many
+                                    digits formats are allowed to have.
 
-        All these parameters exists as class-gobals.
-        (The child-classes TimeFormats an DateFormats add specific globals.)
+        :type seps:                 list
+        :type allow_no_sep:         bool
+        :type figures:              list
         """
         if seps: cls.SEPS = seps
         if not allow_no_sep is None: cls.ALLOW_NO_SEP = allow_no_sep
@@ -284,7 +331,6 @@ class BaseFormats(list):
         Builds and returns a list of code-lists (like ['%d', '%b', '%Y']).
         These code-lists will be joined to format-strings by self._generate().
         """
-        pass
 
     def _generate(self):
         """
@@ -306,15 +352,10 @@ class TimeFormats(BaseFormats):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
-    :keyword figures:           List of three booleans that predicts how many
-                                digits formats are allowed to have.
+    :keyword figures:           List of three booleans.
+    :keyword allow_microsec:    Allows formats with microseconds (%f).
 
-                                * figures[0]: allows a one-digit format ('%H')
-                                * figures[1]: allows two-digit-fmts (e.g. '%H:%M')
-                                * figures[2]: allows three-digit-fmts (e.g. '%H:%M:%S')
-
-    :keyword allow_microsec:    Allows formats with microseconds (%f)
-
+    :type string:               str
     :type seps:                 list
     :type allow_no_sep:         bool
     :type figures:              list
@@ -322,10 +363,30 @@ class TimeFormats(BaseFormats):
 
     The default configuration is:
 
-    :cvar SEPS:                 [':', ' ']
-    :cvar ALLOW_NO_SEP:         True
-    :cvar FIGURES:              [True, True, True]
-    :cvar ALLOW_MICROSEC:       False
+    .. attribute::
+        SEPS:               [':', ' ']
+
+        A list of separators, formats are produced with.
+
+    .. attribute::
+        ALLOW_NO_SEP:       True
+
+        Allows formats without any separator ('%H%M%S')
+
+    .. attribute::
+        FIGURES:            [True, True, True]
+
+        List of three booleans that predicts how many digits formats are allowed
+        to have:
+
+        * figures[0]: Allows the one-digit format '%H'.
+        * figures[1]: Allows two-digit-formats like '%H:%M'.
+        * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
+
+    .. attribute::
+        ALLOW_MICROSEC:     False
+
+        Allows formats with microseconds (%f)
     """
     SEPS = [':', ' ']
     CODES = ['%H', '%M', '%S', '%f']
@@ -374,15 +435,10 @@ class DateFormats(BaseFormats):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
-    :keyword figures:           List of three booleans that predicts how many
-                                digits formats are allowed to have.
-
-                                * figures[0]: allows a one-digit format ('%d')
-                                * figures[1]: allows two-digit-fmts (e.g. '%d/%m')
-                                * figures[2]: allows three-digit-fmts (e.g. '%d/%m/%y')
-
+    :keyword figures:           List of three booleans.
     :keyword allow_month_name:  Allows formats with month-names (%b or %B)
 
+    :type string:               str
     :type seps:                 list
     :type allow_no_sep:         bool
     :type figures:              list
@@ -390,10 +446,30 @@ class DateFormats(BaseFormats):
 
     The default configuration is:
 
-    :cvar SEPS:                 ['.', '-', '/', ' ']
-    :cvar ALLOW_NO_SEP:         True
-    :cvar FIGURES:              [True, True, True]
-    :cvar ALLOW_MONTH_NAME:     True
+    .. attribute::
+        SEPS:               ['.', '-', '/', ' ']
+
+        A list of separators, formats are produced with.
+
+    .. attribute::
+        ALLOW_NO_SEP:       True
+
+        Allows formats without any separator ('%d%m%y')
+
+    .. attribute::
+        FIGURES:            [True, True, True]
+
+        List of three booleans that predicts how many digits formats are allowed
+        to have:
+
+        * figures[0]: Allows the one-digit format '%d'.
+        * figures[1]: Allows two-digit-formats like '%d/%m'.
+        * figures[2]: Allows three-digit-formats like '%d/%m/%y'.
+
+    .. attribute::
+        ALLOW_MONTH_NAME:   True
+
+        Allows formats with literal month-names (%b or %B)
     """
     CODES = ['%d', '%m', '%y']
     SEPS = ['.', '-', '/', ' ']
@@ -486,6 +562,7 @@ class DatetimeFormats(BaseFormats):
     :keyword date_config:       kwargs :class:`DateFormats` are initialized with
     :keyword time_config:       kwargs :class:`TimeFormats` are initialized with
 
+    :type string:               str
     :type seps:                 list
     :type allow_no_sep:         bool
     :type date_config:          dict
@@ -493,8 +570,15 @@ class DatetimeFormats(BaseFormats):
 
     The default configuration is:
 
-    :cvar SEPS:                 [' ', ',', '_', ';']
-    :cvar ALLOW_NO_SEP:         True
+    .. attribute::
+        SEPS:               [' ', ',', '_', ';']
+
+        A list of separators, formats are produced with.
+
+    .. attribute::
+        ALLOW_NO_SEP:       True
+
+        Allows formats without any separator ('%d%m%H%M')
     """
     SEPS = [' ', ',', '_', ';']
 
@@ -535,7 +619,7 @@ class DatetimeFormats(BaseFormats):
 
     def _evaluate_string(self, string):
         """
-        Try to reduce the amount of seps for all three formats-classes.
+        Try to reduce the amount of seps for all three format-classes.
         time-seps and date-seps will be passed to the respective constructor.
         """
         _used = re.findall('[_\W]+', string)
@@ -596,7 +680,7 @@ def parsetime(string, formats=list()):
     """
     Parse a string to a :class:`datetime.time` -object.
 
-    :param string:      String to be parsed.
+    :argument string:   String to be parsed.
     :keyword formats:   List of formats-string.
     :type formats:      list
 
@@ -618,7 +702,7 @@ def parsedate(string, formats=list(), today=None):
     """
     Parse a string to a :class:`datetime.date`-object.
 
-    :param string:      String to be parsed.
+    :argument string:   String to be parsed.
     :keyword formats:   List of formats-string.
     :keyword today:     the date used to complement incomplete dates
     :type formats:      list
@@ -653,7 +737,7 @@ def parsedatetime(string, formats=list(), today=None):
     """
     Parse a string to a :class:`datetime.datetime`-object.
 
-    :param string:      String to be parsed.
+    :argument string:   String to be parsed.
     :keyword formats:   List of formats-string.
     :keyword today:     the date used to complement incomplete dates
     :type formats:      list
@@ -689,7 +773,7 @@ def parsetimedelta(string, key='weeks'):
     """
     Parse a string to a :class:`datetime.timedelta`-object.
 
-    :param string:      String to be parsed.
+    :argument string:   String to be parsed.
     :keyword formats:   String that contains or matches a timedelta-keyword.
 
     :rtype:             :class:`datetime.timedelta`

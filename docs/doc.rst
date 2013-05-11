@@ -4,6 +4,8 @@ Dokumentation
 
 .. automodule:: timeparser
 
+.. _parser-functions:
+
 Parser-functions
 ================
 
@@ -21,7 +23,9 @@ Parser-functions
 
 .. autofunction:: parsetimedelta
 
-Formats-classes
+.. _format-classes:
+
+Format-classes
 ===============
 
 .. autoclass:: TimeFormats
@@ -36,4 +40,19 @@ Formats-classes
 
 .. autoclass:: DatetimeFormats
    :members:
+
+Endian and Today
+================
+
+.. autoclass:: Endian
+   :members:
+
+---------------------------
+
+.. autoclass:: Today
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+
 
