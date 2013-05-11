@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os
 from distutils.core import setup
 

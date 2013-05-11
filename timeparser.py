@@ -272,14 +272,18 @@ class BaseFormats(list):
     :type seps:                 list
     :type allow_no_sep:         bool
     :type figures:              list
-
-    The default configuration is:
-
-    :cvar ALLOW_NO_SEP:         True
-    :cvar FIGURES:              [True, True, True]
     """
     ALLOW_NO_SEP = True
+    """Allows formats without any separator ('%H%M%S')."""
     FIGURES = [True, True, True]
+    """
+    List of three booleans that predicts how many digits formats are allowed
+    to have:
+
+    * figures[0]: Allows the one-digit format '%H'.
+    * figures[1]: Allows two-digit-formats like '%H:%M'.
+    * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
+    """
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
         super(BaseFormats, self).__init__()
         self._figures = figures or self.FIGURES[:]
@@ -356,7 +360,7 @@ class TimeFormats(BaseFormats):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
-    :keyword figures:           List of three booleans.
+    :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
     :keyword allow_microsec:    Allows formats with microseconds (%f).
 
     :type string:               str
@@ -364,38 +368,24 @@ class TimeFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type figures:              list
     :type allow_microsec:       bool
-
-    The default configuration is:
-
-    .. attribute::
-        SEPS:               [':', ' ']
-
-        A list of separators, formats are produced with.
-
-    .. attribute::
-        ALLOW_NO_SEP:       True
-
-        Allows formats without any separator ('%H%M%S')
-
-    .. attribute::
-        FIGURES:            [True, True, True]
-
-        List of three booleans that predicts how many digits formats are allowed
-        to have:
-
-        * figures[0]: Allows the one-digit format '%H'.
-        * figures[1]: Allows two-digit-formats like '%H:%M'.
-        * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
-
-    .. attribute::
-        ALLOW_MICROSEC:     False
-
-        Allows formats with microseconds (%f)
     """
-    SEPS = [':', ' ']
     CODES = ['%H', '%M', '%S', '%f']
     MICROSEC_SEPS = ['.', ' ']          #TODO: make it configurable as well
+    SEPS = [':', ' ']
+    """A list of separators, formats are produced with."""
+    ALLOW_NO_SEP = True
+    """Allows formats without any separator ('%H%M%S')."""
+    FIGURES = [True, True, True]
+    """
+    List of three booleans that predicts how many digits formats are allowed
+    to have:
+
+    * figures[0]: Allows the one-digit format '%H'.
+    * figures[1]: Allows two-digit-formats like '%H:%M'.
+    * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
+    """
     ALLOW_MICROSEC = False
+    """Allows formats with microseconds (%f)."""
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_microsec=None):
@@ -410,8 +400,7 @@ class TimeFormats(BaseFormats):
 
         :keyword seps:              Allowed separators for formats.
         :keyword allow_no_sep:      Allows formats without any separator.
-        :keyword figures:           List of three booleans that predicts how many
-                                    digits formats are allowed to have.
+        :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
         :keyword allow_microsec:    Allowes formats with microseconds (%f)
 
         :type seps:                 list
@@ -439,7 +428,7 @@ class DateFormats(BaseFormats):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
-    :keyword figures:           List of three booleans.
+    :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
     :keyword allow_month_name:  Allows formats with month-names (%b or %B)
 
     :type string:               str
@@ -447,42 +436,28 @@ class DateFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type figures:              list
     :type allow_month_name:     bool
-
-    The default configuration is:
-
-    .. attribute::
-        SEPS:               ['.', '-', '/', ' ']
-
-        A list of separators, formats are produced with.
-
-    .. attribute::
-        ALLOW_NO_SEP:       True
-
-        Allows formats without any separator ('%d%m%y')
-
-    .. attribute::
-        FIGURES:            [True, True, True]
-
-        List of three booleans that predicts how many digits formats are allowed
-        to have:
-
-        * figures[0]: Allows the one-digit format '%d'.
-        * figures[1]: Allows two-digit-formats like '%d/%m'.
-        * figures[2]: Allows three-digit-formats like '%d/%m/%y'.
-
-    .. attribute::
-        ALLOW_MONTH_NAME:   True
-
-        Allows formats with literal month-names (%b or %B)
     """
     CODES = ['%d', '%m', '%y']
-    SEPS = ['.', '-', '/', ' ']
     CODE_DICT = {
         'year' : ['%y', '%Y'], 
         'month' : ['%m', '%b', '%B'],
         'day' : ['%d']
         }
+    SEPS = ['.', '-', '/', ' ']
+    """A list of separators, formats are produced with."""
+    ALLOW_NO_SEP = True
+    """Allows formats without any separator ('%d%m%y')."""
+    FIGURES = [True, True, True]
+    """
+    List of three booleans that predicts how many digits formats are allowed
+    to have:
+
+    * figures[0]: Allows the one-digit format '%d'.
+    * figures[1]: Allows two-digit-formats like '%d/%m'.
+    * figures[2]: Allows three-digit-formats like '%d/%m/%y'.
+    """
     ALLOW_MONTH_NAME = True
+    """Allows formats with literal month-names (%b or %B)."""
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_month_name=None, endian=None):
@@ -502,8 +477,7 @@ class DateFormats(BaseFormats):
 
         :keyword seps:              Allowed separators for formats.
         :keyword allow_no_sep:      Allows formats without any separator.
-        :keyword figures:           List of three booleans that predicts how many
-                                    digits formats are allowed to have.
+        :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
         :keyword allow_month_name:  Allows formats with month-names (%b or %B)
 
         :type seps:                 list
@@ -571,20 +545,11 @@ class DatetimeFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type date_config:          dict
     :type time_config:          dict
-
-    The default configuration is:
-
-    .. attribute::
-        SEPS:               [' ', ',', '_', ';']
-
-        A list of separators, formats are produced with.
-
-    .. attribute::
-        ALLOW_NO_SEP:       True
-
-        Allows formats without any separator ('%d%m%H%M')
     """
     SEPS = [' ', ',', '_', ';']
+    """A list of separators, formats are produced with."""
+    ALLOW_NO_SEP = True
+    """Allows formats without any separator ('%H%M%S')."""
 
     def __init__(self, string=None, seps=None, allow_no_sep=None,
                 date_config=dict(), time_config=dict()):
