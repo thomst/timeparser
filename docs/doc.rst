@@ -41,13 +41,17 @@ Format-classes
 .. autoclass:: DatetimeFormats
    :members:
 
-Endian and Today
-================
+Endianness and Date-completition
+================================
+
+.. autodata:: ENDIAN
 
 .. autoclass:: Endian
    :members:
 
 ---------------------------
+
+.. autodata:: TODAY
 
 .. autoclass:: Today
    :members:

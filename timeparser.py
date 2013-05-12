@@ -66,63 +66,6 @@ of supported formats.)
 
 The `parser-functions`_ make use of this: calling ``parsedate('3 Jan')`` is actually
 the same as ``parsedate('3 Jan', formats=DateFormats('3 Jan'))``.
-
-Date-completition and Endianness
---------------------------------
-.. attribute:: timeparser.TODAY
-
-TODAY is an instance of :class:`Today` and is used to complement dates that were
-parsed with an incomplete format-string:
-
-    >>> TODAY
-    TODAY(2013, 5, 9)
-    >>> parsedate('20 Apr')
-    datetime.date(2013, 4, 20)
-
-or even:
-
-    >>> TODAY
-    TODAY(2013, 5, 9)
-    >>> parsedate('20')
-    datetime.date(2013, 5, 20)
-
-TODAY defaults to :meth:`datetime.date.today`, but can be changed through
-:meth:`Today.set`:
-
-    >>> TODAY.set(2000, 1, 1)
-    >>> parsedate('20')
-    datetime.date(2000, 1, 20)
-
--------------------------------------------------------------------------------
-
-.. attribute:: timeparser.ENDIAN
-
-In generell dates could have one of three orders:
-    * little-endian:    *day, month, year*
-    * big-endian:       *year, month, day*
-    * middle-endian:    *month, day, year*
-
-ENDIAN is an instance of :class:`Endian` and defines the order that should be
-applied:
-
-    >>> ENDIAN
-    ('day', 'month', 'year')
-    >>> parsedate('26/4/13')
-    datetime.date(2013, 4, 26)
-
-On creation a local-default-order is guessed, but could be changed through
-:meth:`Endian.set`:
-
-    >>> ENDIAN.set('big')
-    >>> ENDIAN
-    ('year', 'month', 'day')
-    >>> parsedate('26/4/13')
-    datetime.date(2026, 4, 13)
-
-.. warning::
-
-    Guessing the local default is in a provisional state and a middle-endian-
-    order is not regarded at all.
 """
 
 import datetime
@@ -190,7 +133,29 @@ class Today:
         return 'TODAY(%s, %s, %s)' % (self.year, self.month, self.day)
 
 TODAY = Today()
+"""
+TODAY is an instance of :class:`Today` and is used to complement dates that were
+parsed with an incomplete format-string:
 
+    >>> TODAY
+    TODAY(2013, 5, 9)
+    >>> parsedate('20 Apr')
+    datetime.date(2013, 4, 20)
+
+or even:
+
+    >>> TODAY
+    TODAY(2013, 5, 9)
+    >>> parsedate('20')
+    datetime.date(2013, 5, 20)
+
+TODAY defaults to :meth:`datetime.date.today`, but can be changed through
+:meth:`Today.set`:
+
+    >>> TODAY.set(2000, 1, 1)
+    >>> parsedate('20')
+    datetime.date(2000, 1, 20)
+"""
 
 class Endian:
     """
@@ -253,6 +218,34 @@ class Endian:
         else: return 'little'
 
 ENDIAN = Endian()
+"""
+In generell dates could have one of three orders:
+    * little-endian:    *day, month, year*
+    * big-endian:       *year, month, day*
+    * middle-endian:    *month, day, year*
+
+ENDIAN is an instance of :class:`Endian` and defines the order that should be
+applied:
+
+    >>> ENDIAN
+    ('day', 'month', 'year')
+    >>> parsedate('26/4/13')
+    datetime.date(2013, 4, 26)
+
+On creation a local-default-order is guessed, but could be changed through
+:meth:`Endian.set`:
+
+    >>> ENDIAN.set('big')
+    >>> ENDIAN
+    ('year', 'month', 'day')
+    >>> parsedate('26/4/13')
+    datetime.date(2026, 4, 13)
+
+.. warning::
+
+    Guessing the local default is in a provisional state and a middle-endian-
+    order is not regarded at all.
+"""
 
 
 class BaseFormats(list):
