@@ -42,9 +42,10 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(parser('24 Apr 2013'), date(2013,4,24))
 
         today = date.today()
-        self.assertEqual(parser('2403'), date(today.year, 3, 24))
+        self.assertEqual(parser('24.03.'), date(today.year, 3, 24))
         self.assertEqual(parser('24'), date(today.year, today.month, 24))
         self.assertEqual(parser('243'), date(today.year, 3, 24))
+        self.assertEqual(parser('24.'), date(today.year, today.month, 24))
 
         today = date(1, 2, 3)
         self.assertEqual(parser('2403', today=today), date(today.year, 3, 24))
@@ -54,7 +55,12 @@ class ParserTests(unittest.TestCase):
     def test_parsedatetime(self):
         parser = timeparser.parsedatetime
         dtime = datetime.datetime
+        today = datetime.date.today()
         self.assertEqual(parser('24.3.2013,23:44'), dtime(2013,3,24,23,44))
+        self.assertEqual(parser('24.3.2013,23:44'), dtime(2013,3,24,23,44))
+        self.assertEqual(parser('24.3.2013,23:44'), dtime(2013,3,24,23,44))
+        self.assertEqual(parser('24.3. 23:44'), dtime(today.year,3,24,23,44))
+        self.assertEqual(parser('24. 23:44'), dtime(today.year,today.month,24,23,44))
 
     def test_parsetimedelta(self):
         parser = timeparser.parsetimedelta

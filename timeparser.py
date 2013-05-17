@@ -277,6 +277,8 @@ class BaseFormats(list):
     * figures[1]: Allows two-digit-formats like '%H:%M'.
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
     """
+    ERR_MSG = "no proper format for '%s'"
+
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
         super(BaseFormats, self).__init__()
         self._figures = figures or self.FIGURES[:]
@@ -284,6 +286,7 @@ class BaseFormats(list):
         else: self._seps = self.SEPS[:]
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
+        self._ends_with_sep = False
         if string: self._evaluate_string(string)
         self._generate()
 
@@ -316,16 +319,19 @@ class BaseFormats(list):
         except IndexError:
             if self._allow_no_sep: self._seps = list()
             elif self._figures[0]: self._figures = [True, False, False]
-            else: raise ValueError("no proper format for '%s'" % string)
+            else: raise ValueError(self.ERR_MSG % string)
         else:
+            self._ends_with_sep = string.endswith(sep)
             self._allow_no_sep = False
             self._seps = [sep]
-            figures = len(string.split(sep))
+            figures = len(string.strip(sep).split(sep))
             if self._figures[2] and figures == 3:
                 self._figures = [False, False, True]
             elif self._figures[1] and figures == 2:
                 self._figures = [False, True, False]
-            else: raise ValueError("no proper format for '%s'" % string)
+            elif self._figures[0] and figures == 1:
+                self._figures = [True, False, False]
+            else: raise ValueError(self.ERR_MSG % string)
 
     def _get_code_list(self):
         """
@@ -339,10 +345,12 @@ class BaseFormats(list):
         """
         formats = list()
         code_list = self._get_code_list()
-        if self._figures[0]: formats.append(self.CODES[0])
         if self._allow_no_sep: self._seps.append(str())
         for s in self._seps:
-            for codes in code_list: formats.append(s.join(codes))
+            for codes in code_list:
+                format = s.join(codes)
+                if self._ends_with_sep: format += s
+                formats.append(format)
         self.extend(formats)
 
 
@@ -404,8 +412,13 @@ class TimeFormats(BaseFormats):
         if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
 
+    def _evaluate_string(self, string):
+        super(TimeFormats, self)._evaluate_string(string)
+        if self._ends_with_sep: raise ValueError(self.ERR_MSG % string)
+
     def _get_code_list(self):
         code_list = list()
+        if self._figures[0]: code_list.append(self.CODES[:1])
         if self._figures[1]: code_list.append(self.CODES[:2])
         if self._figures[2]: code_list.append(self.CODES[:3])
         if self._allow_microsec:
@@ -491,9 +504,9 @@ class DateFormats(BaseFormats):
         """
         #TODO: if a month-name was found, assure that no formats with %m will
         # be produced.
+        super(DateFormats, self)._evaluate_string(string)
         if self._allow_month_name:
             if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
-        super(DateFormats, self)._evaluate_string(string)
 
     def _get_code_list(self):
         #self.endian is deprecated. Will be changed to the global ENDIAN.
@@ -507,6 +520,8 @@ class DateFormats(BaseFormats):
                 c_dict['month'] = month
                 c_list.append([c_dict[k] for k in order])
             return c_list
+
+        if self._figures[0]: code_list.append(self.CODES[:1])
 
         if self._figures[1]:
             incomplete = list(self.endian)
@@ -585,16 +600,24 @@ class DatetimeFormats(BaseFormats):
         time-seps and date-seps will be passed to the respective constructor.
         """
         _used = re.findall('[_\W]+', string)
-        used = set(_used)
-        date_seps = set(self._date_config['seps']) & used
-        time_seps = set(self._time_config['seps']) & used
-        seps = set(self._seps) & used
+
+        # what if string is '24.3. 22:30'?
+        for s in self._seps:
+            for u in _used[:2]:
+                if u.startswith('.') and u.endswith(s):
+                    index = _used.index(u)
+                    _used[index] = '.'
+                    _used.insert(index + 1, s)
+
+        used = [s for i,s in enumerate(_used) if not s in _used[:i]]
+        date_seps = set(self._date_config['seps']) & set(used)
+        time_seps = set(self._time_config['seps']) & set(used)
+        seps = set(self._seps) & set(used)
 
         #first check the usage of wrong separators
-        if not used <= date_seps | time_seps | seps:
+        if not set(used) <= date_seps | time_seps | seps:
             raise ValueError("no proper format for '%s'" % string)
 
-        ordered = [s for i,s in enumerate(_used) if not s in _used[:i]]
         common = seps & (date_seps | time_seps)
         wanted = seps - (date_seps | time_seps)
 
@@ -605,9 +628,9 @@ class DatetimeFormats(BaseFormats):
         if len(wanted) == 1:
             self._allow_no_sep = False
             self._seps = list(wanted)
-        elif len(ordered) >= 3:
+        elif len(used) >= 3:
             self._allow_no_sep = False
-            self._seps = ordered[1:2]
+            self._seps = used[1:2]
         elif not wanted:
             if common: self._seps = list(common)
             else:
