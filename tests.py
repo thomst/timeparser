@@ -27,6 +27,11 @@ class ParserTests(unittest.TestCase):
         timeparser.DateFormats.config(allow_month_name=False)
         self.assertRaises(ValueError, timeparser.parsedate, '24 Apr 2013')
 
+    def test_formatlists(self):
+        self.assertIsInstance(timeparser.TimeFormats(), list)
+        self.assertIsInstance(timeparser.DatetimeFormats(), list)
+        self.assertIsInstance(timeparser.DateFormats(), list)
+
     def test_parsetime(self):
         parser = timeparser.parsetime
         time = datetime.time

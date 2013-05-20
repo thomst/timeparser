@@ -286,7 +286,7 @@ class BaseFormats(list):
         else: self._seps = self.SEPS[:]
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
-        self._ends_with_sep = False
+#        self._ends_with_sep = False
         if string: self._evaluate_string(string)
         self._generate()
 
@@ -321,7 +321,7 @@ class BaseFormats(list):
             elif self._figures[0]: self._figures = [True, False, False]
             else: raise ValueError(self.ERR_MSG % string)
         else:
-            self._ends_with_sep = string.endswith(sep)
+#            self._ends_with_sep = string.endswith(sep)
             self._allow_no_sep = False
             self._seps = [sep]
             figures = len(string.strip(sep).split(sep))
@@ -349,7 +349,6 @@ class BaseFormats(list):
         for s in self._seps:
             for codes in code_list:
                 format = s.join(codes)
-                if self._ends_with_sep: format += s
                 formats.append(format)
         self.extend(formats)
 
@@ -412,10 +411,6 @@ class TimeFormats(BaseFormats):
         if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
 
-    def _evaluate_string(self, string):
-        super(TimeFormats, self)._evaluate_string(string)
-        if self._ends_with_sep: raise ValueError(self.ERR_MSG % string)
-
     def _get_code_list(self):
         code_list = list()
         if self._figures[0]: code_list.append(self.CODES[:1])
@@ -445,8 +440,8 @@ class DateFormats(BaseFormats):
     """
     CODES = ['%d', '%m', '%y']
     CODE_DICT = {
-        'year' : ['%y', '%Y'], 
-        'month' : ['%m', '%b', '%B'],
+        'year' : ['%y', '%Y', ' %y', ' %Y'], 
+        'month' : ['%m', '%b', ' %b', '%B', ' %B'],
         'day' : ['%d']
         }
     SEPS = ['.', '-', '/', ' ']
@@ -504,6 +499,7 @@ class DateFormats(BaseFormats):
         """
         #TODO: if a month-name was found, assure that no formats with %m will
         # be produced.
+        # we need: allow_long_month, allow_short_month, allow_month_number
         super(DateFormats, self)._evaluate_string(string)
         if self._allow_month_name:
             if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
@@ -521,7 +517,8 @@ class DateFormats(BaseFormats):
                 c_list.append([c_dict[k] for k in order])
             return c_list
 
-        if self._figures[0]: code_list.append(self.CODES[:1])
+        if self._figures[0]:
+            code_list.append(self.CODES[:1])
 
         if self._figures[1]:
             incomplete = list(self.endian)
@@ -536,6 +533,24 @@ class DateFormats(BaseFormats):
                 else: code_list.append([code_dict[k] for k in self.endian])
 
         return code_list
+
+    def _generate(self):
+        """
+        Generates the formats and populate the list-instance.
+        """
+        #TODO: 4. Janurary 2013 does not work... (there will be always a dot after
+        # Janurary.
+        formats = list()
+        code_list = self._get_code_list()
+        if self._allow_no_sep: self._seps.append(str())
+        for s in self._seps:
+            for codes in code_list:
+                format = s.join(codes)
+                formats.append(format)
+                if s == '.':
+                    if len(codes) == 2 and not '%B' in codes: formats.append(format + s)
+                    elif len(codes) == 1: formats.append(format + s)
+        self.extend(formats)
 
 
 class DatetimeFormats(BaseFormats):
@@ -599,6 +614,8 @@ class DatetimeFormats(BaseFormats):
         Try to reduce the amount of seps for all three format-classes.
         time-seps and date-seps will be passed to the respective constructor.
         """
+        #TODO: reduce the combinations to a sensible range! E.g. don't allow
+        # non-separated formats with seperation within the date or time.
         _used = re.findall('[_\W]+', string)
 
         # what if string is '24.3. 22:30'?
