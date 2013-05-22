@@ -194,9 +194,15 @@ class Endian:
         """
         self._key = self._check_key(key) or self._guess()
 
-    #deprecated:
-    def get(self, key=None): return self.OPTIONS[self._check_key(key) or self._guess()]
-    ###########
+    def get(self, key=None, no_year=False):
+        key = self._check_key(key) or self._key
+        if no_year:
+            if key in ['little', 'middle']: return self.OPTIONS[key][:-1]
+            else: return self.OPTIONS[key][1:]
+        endian = self.__class__()
+        endian.set(self._check_key(key) or self._key)
+        return endian
+
 
     @classmethod
     def _check_key(cls, key):
@@ -286,7 +292,6 @@ class BaseFormats(list):
         else: self._seps = self.SEPS[:]
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
-#        self._ends_with_sep = False
         if string: self._evaluate_string(string)
         self._generate()
 
@@ -321,7 +326,6 @@ class BaseFormats(list):
             elif self._figures[0]: self._figures = [True, False, False]
             else: raise ValueError(self.ERR_MSG % string)
         else:
-#            self._ends_with_sep = string.endswith(sep)
             self._allow_no_sep = False
             self._seps = [sep]
             figures = len(string.strip(sep).split(sep))
@@ -440,11 +444,11 @@ class DateFormats(BaseFormats):
     """
     CODES = ['%d', '%m', '%y']
     CODE_DICT = {
-        'year' : ['%y', '%Y', ' %y', ' %Y'], 
-        'month' : ['%m', '%b', ' %b', '%B', ' %B'],
+        'year' : ['%y', '%Y'], 
+        'month' : ['%m', '%b', '%B'],
         'day' : ['%d']
         }
-    SEPS = ['.', '-', '/', ' ']
+    SEPS = ['.', '-', '/', ' ', '. ']
     """A list of separators, formats are produced with."""
     ALLOW_NO_SEP = True
     """Allows formats without any separator ('%d%m%y')."""
@@ -457,14 +461,19 @@ class DateFormats(BaseFormats):
     * figures[1]: Allows two-digit-formats like '%d/%m'.
     * figures[2]: Allows three-digit-formats like '%d/%m/%y'.
     """
-    ALLOW_MONTH_NAME = True
-    """Allows formats with literal month-names (%b or %B)."""
+    MONTH_CODE = [True, True, True]
+    YEAR_CODE = [True, True]
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_month_name=None, endian=None):
-        if allow_month_name is None:
-            self._allow_month_name = self.ALLOW_MONTH_NAME
-        else: self._allow_month_name = allow_month_name
+        if allow_month_name is False:
+            self._month_code = [True, False, False]
+        elif allow_month_name is True:
+            self._month_code = [True, True, True]
+        else: self._month_code = self.MONTH_CODE
+        self._year_code = self.YEAR_CODE
+        if not any(self._month_code) or not any(self._year_code):
+            raise Exception('invalid configuration')
         #deprecated:
         if endian: self.endian = ENDIAN.get(endian)
         else: self.endian = ENDIAN
@@ -486,7 +495,11 @@ class DateFormats(BaseFormats):
         :type figures:              list
         :type allow_month_name:     bool
         """
-        if not allow_month_name is None: cls.ALLOW_MONTH_NAME = allow_month_name
+        if allow_month_name is False:
+            cls.MONTH_CODE = [True, False, False]
+        elif allow_month_name is True:
+            cls.MONTH_CODE = [True, True, True]
+
         #deprecated:
         if endian: ENDIAN.set(endian)
         ###########
@@ -497,40 +510,76 @@ class DateFormats(BaseFormats):
         Checks string for literal month-name and calls the
         super-class-_evaluate_string-method.
         """
-        #TODO: if a month-name was found, assure that no formats with %m will
-        # be produced.
-        # we need: allow_long_month, allow_short_month, allow_month_number
-        super(DateFormats, self)._evaluate_string(string)
-        if self._allow_month_name:
-            if not re.search('[a-zA-Z]+', string): self._allow_month_name = False
+        values = re.findall('[^\W_]+', string)
+        seps = re.findall('[\W_]+', string)
+
+        #check month-code:
+        if self._month_code[1] and re.search('(?<![a-zA-Z])[a-zA-Z]{3}(?![a-zA-Z])', string):
+            self._month_code = [False, True, False]
+        elif self._month_code[2] and re.search('(?<![a-zA-Z])[a-zA-Z]{4,9}(?![a-zA-Z])', string):
+            self._month_code = [False, False, True]
+        elif self._month_code[0] and not re.search('[a-zA-Z]+', string):
+            self._month_code = [True, False, False]
+        else: raise ValueError(self.ERR_MSG % string)
+
+        #if ending on a sep it must be a dot:
+        if len(seps) == len(values) and not seps[-1] == '.':
+            raise ValueError(self.ERR_MSG % string)
+
+        #check values:
+        if self._figures[2] and len(values) == 3 and len(seps) == 2:
+            if self._year_code[0] and len(values[2]) == 2:
+                self._year_code = [True, False]
+            else: self._year_code = [False, True]
+            self._figures = [False, False, True]
+        elif self._figures[1] and len(values) == 2:
+            self._figures = [False, True, False]
+        elif len(values) == 1:
+            value = values[0]
+            if seps and self._figures[0]: self._figures = [True, False, False]
+            elif not seps:
+                if any(self._month_code[1:]):
+                    if value[-1].isalpha(): self._figures = [False, True, False]
+                    else: self._figures = [False, False, True]
+                elif len(value) == 1: self._figures = [True, False, False]
+                elif len(value) <= 3: self._figures = [True, True, False]
+                else:
+                    if len(value) <= 4: self._figures = [False, True, True]
+                    else: self._figures = [False, False, True]
+                    if len(value) <= 5: self._year_code = [True, False]
+        else: raise ValueError(self.ERR_MSG % string)
+
+        #check seperators:
+        if not set(seps) <= set(self._seps):
+            raise ValueError(self.ERR_MSG % string)
+        if len(set(seps)) <= 1: pass
+        elif any(self._month_code[1:]) and seps[1] == ' ': pass
+        else: raise ValueError(self.ERR_MSG % string)
+
+        #TODO: building in _generate
+        code_list = self._get_code_list()
+
+        for codes in code_list:
+            self.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
 
     def _get_code_list(self):
-        #self.endian is deprecated. Will be changed to the global ENDIAN.
+        def get_code(key):
+            if key == 'month':
+                mcodes = self.CODE_DICT['month']
+                return filter(lambda c: self._month_code[mcodes.index(c)], mcodes)
+            elif key == 'year':
+                ycodes = self.CODE_DICT['year']
+                return filter(lambda c: self._year_code[ycodes.index(c)], ycodes)
+            elif key == 'day': return ['%d']
+
         code_list = list()
-        code_dict = dict([(k, self.CODE_DICT[k][0]) for k in self.endian])
-
-        def get_month_name(order):
-            c_dict = code_dict.copy()
-            c_list = list()
-            for month in self.CODE_DICT['month']:
-                c_dict['month'] = month
-                c_list.append([c_dict[k] for k in order])
-            return c_list
-
-        if self._figures[0]:
-            code_list.append(self.CODES[:1])
-
+        if self._figures[0]: code_list.append(get_code('day'))
         if self._figures[1]:
-            incomplete = list(self.endian)
-            incomplete.remove('year')
-            if self._allow_month_name: code_list.extend(get_month_name(incomplete))
-            else: code_list.append([code_dict[k] for k in incomplete])
-
+            cc = map(get_code, self.endian.get(no_year=True))
+            code_list.extend([(x,y) for x in cc[0] for y in cc[1]])
         if self._figures[2]:
-            for year in self.CODE_DICT['year']:
-                code_dict['year'] = year
-                if self._allow_month_name: code_list.extend(get_month_name(self.endian))
-                else: code_list.append([code_dict[k] for k in self.endian])
+            cc = map(get_code, self.endian)
+            code_list.extend([(x,y,z) for x in cc[0] for y in cc[1] for z in cc[2]])
 
         return code_list
 
@@ -540,6 +589,7 @@ class DateFormats(BaseFormats):
         """
         #TODO: 4. Janurary 2013 does not work... (there will be always a dot after
         # Janurary.
+        if self: return self
         formats = list()
         code_list = self._get_code_list()
         if self._allow_no_sep: self._seps.append(str())
@@ -580,7 +630,7 @@ class DatetimeFormats(BaseFormats):
             seps = DateFormats.SEPS,
             allow_no_sep = DateFormats.ALLOW_NO_SEP,
             figures = DateFormats.FIGURES,
-            allow_month_name = DateFormats.ALLOW_MONTH_NAME,
+            allow_month_name = DateFormats.MONTH_CODE[-1],
             )
         self._time_config = dict(
             seps = TimeFormats.SEPS,
