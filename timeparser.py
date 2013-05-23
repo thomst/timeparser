@@ -203,6 +203,8 @@ class Endian:
         endian.set(self._check_key(key) or self._key)
         return endian
 
+    def index(self, item):
+        return self.OPTIONS[self._key].index(item)
 
     @classmethod
     def _check_key(cls, key):
@@ -408,6 +410,7 @@ class TimeFormats(BaseFormats):
     """
     ALLOW_MICROSEC = False
     """Allows formats with microseconds (%f)."""
+    #TODO: what about a suffix like 'h'?
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_microsec=None):
@@ -442,6 +445,7 @@ class TimeFormats(BaseFormats):
         """
         fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
 
+        #TODO: reworking this...
         try: sep = [s for s in self._seps if s in string][0]
         except IndexError:
             if self._allow_no_sep: self._seps = list()
@@ -554,7 +558,7 @@ class DateFormats(BaseFormats):
         ###########
 
         super(DateFormats, cls).config(*args, **kwargs)
-        for c in [cls.MONTH_CODE, cls.YEAR_CODE, cls.FIGURES]:
+        for c in [cls.MONTH_CODE, cls.YEAR_CODE]:
             if not any(c): raise Exception('invalid configuration')
 
     def _check_config(self):
@@ -586,7 +590,7 @@ class DateFormats(BaseFormats):
         #check values:
         if len(values) == 3:
             #TODO: doesn't work for big-endian
-            if len(values[2]) == 2: self._year_code = ymask([True, False])
+            if len(values[self.endian.index('year')]) == 2: self._year_code = ymask([True, False])
             else: self._year_code = ymask([False, True])
             self._figures = fmask([False, False, True])
         elif len(values) == 2: self._figures = fmask([False, True, False])
