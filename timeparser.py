@@ -464,6 +464,14 @@ class DateFormats(BaseFormats):
     MONTH_CODE = [True, True, True]
     YEAR_CODE = [True, True]
 
+    #TODO: these are endian-specific...
+    FORMATS = [
+        [['%d'], ['.']],
+        [['%d'], ['.', '. '], ['%m', '%b'], ['.']],
+        [['%d'], ['.'], ['%m', '%b'], ['. '], ['%y', '%Y']],
+        [['%d'], ['.', '. '], ['%b', '%B'], [' '], ['%y', '%Y']],
+        ]
+
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_month_name=None, endian=None):
         if allow_month_name is False:
@@ -472,13 +480,13 @@ class DateFormats(BaseFormats):
             self._month_code = [True, True, True]
         else: self._month_code = self.MONTH_CODE
         self._year_code = self.YEAR_CODE
-        if not any(self._month_code) or not any(self._year_code):
-            raise Exception('invalid configuration')
+
         #deprecated:
         if endian: self.endian = ENDIAN.get(endian)
         else: self.endian = ENDIAN
         ###########
         super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
+        self._check_config()
 
     @classmethod
     def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
@@ -499,11 +507,19 @@ class DateFormats(BaseFormats):
             cls.MONTH_CODE = [True, False, False]
         elif allow_month_name is True:
             cls.MONTH_CODE = [True, True, True]
+        #TODO: check class-config
 
         #deprecated:
         if endian: ENDIAN.set(endian)
         ###########
+
         super(DateFormats, cls).config(*args, **kwargs)
+        for c in [cls.MONTH_CODE, cls.YEAR_CODE, cls.FIGURES]:
+            if not any(c): raise Exception('invalid configuration')
+
+    def _check_config(self):
+        for c in [self._month_code, self._year_code, self._figures]:
+            if not any(c): raise Exception('invalid configuration')
 
     def _evaluate_string(self, string):
         """
@@ -513,54 +529,66 @@ class DateFormats(BaseFormats):
         values = re.findall('[^\W_]+', string)
         seps = re.findall('[\W_]+', string)
 
-        #check month-code:
-        if self._month_code[1] and re.search('(?<![a-zA-Z])[a-zA-Z]{3}(?![a-zA-Z])', string):
-            self._month_code = [False, True, False]
-        elif self._month_code[2] and re.search('(?<![a-zA-Z])[a-zA-Z]{4,9}(?![a-zA-Z])', string):
-            self._month_code = [False, False, True]
-        elif self._month_code[0] and not re.search('[a-zA-Z]+', string):
-            self._month_code = [True, False, False]
-        else: raise ValueError(self.ERR_MSG % string)
+        #masks:
+        fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
+        ymask = lambda y: map(lambda x,y: y if x else x, self._year_code, y)
+        mmask = lambda m: map(lambda x,y: y if x else x, self._month_code, m)
 
-        #if ending on a sep it must be a dot:
-        if len(seps) == len(values) and not seps[-1] == '.':
-            raise ValueError(self.ERR_MSG % string)
+        #check month-code:
+        if re.search('(?<![a-zA-Z])[a-zA-Z]{3}(?![a-zA-Z])', string):
+            self._month_code = mmask([False, True, False])
+        elif re.search('(?<![a-zA-Z])[a-zA-Z]{4,9}(?![a-zA-Z])', string):
+            self._month_code = mmask([False, False, True])
+        elif not re.search('[a-zA-Z]+', string):
+            self._month_code = mmask([True, False, False])
+        else: raise ValueError(self.ERR_MSG % string)
 
         #check values:
-        if self._figures[2] and len(values) == 3 and len(seps) == 2:
-            if self._year_code[0] and len(values[2]) == 2:
-                self._year_code = [True, False]
-            else: self._year_code = [False, True]
-            self._figures = [False, False, True]
-        elif self._figures[1] and len(values) == 2:
-            self._figures = [False, True, False]
+        if len(values) == 3:
+            #TODO: doesn't work for big-endian
+            if len(values[2]) == 2: self._year_code = ymask([True, False])
+            else: self._year_code = ymask([False, True])
+            self._figures = fmask([False, False, True])
+        elif len(values) == 2: self._figures = fmask([False, True, False])
         elif len(values) == 1:
             value = values[0]
-            if seps and self._figures[0]: self._figures = [True, False, False]
+            if seps: self._figures = fmask([True, False, False])
             elif not seps:
                 if any(self._month_code[1:]):
-                    if value[-1].isalpha(): self._figures = [False, True, False]
-                    else: self._figures = [False, False, True]
-                elif len(value) == 1: self._figures = [True, False, False]
-                elif len(value) <= 3: self._figures = [True, True, False]
+                    if value[-1].isalpha(): self._figures = fmask([False, True, False])
+                    else: self._figures = fmask([False, False, True])
+                elif len(value) == 1: self._figures = fmask([True, False, False])
+                elif len(value) <= 3: self._figures = fmask([True, True, False])
                 else:
-                    if len(value) <= 4: self._figures = [False, True, True]
-                    else: self._figures = [False, False, True]
-                    if len(value) <= 5: self._year_code = [True, False]
+                    if len(value) <= 4: self._figures = fmask([False, True, True])
+                    else: self._figures = fmask([False, False, True])
+                    if len(value) <= 5: self._year_code = ymask([True, False])
+                    elif len(value) >= 7: self._year_code = ymask([False, True])
         else: raise ValueError(self.ERR_MSG % string)
 
-        #check seperators:
-        if not set(seps) <= set(self._seps):
-            raise ValueError(self.ERR_MSG % string)
-        if len(set(seps)) <= 1: pass
-        elif any(self._month_code[1:]) and seps[1] == ' ': pass
-        else: raise ValueError(self.ERR_MSG % string)
+        #check config:
+        try: self._check_config()
+        except Exception: raise ValueError(self.ERR_MSG % string)
 
-        #TODO: building in _generate
-        code_list = self._get_code_list()
+        #TODO: maybe building a format-list and checking it against the lists in
+        #self.FORMATES (item by item). Then let _generate building the formats.
+        clist = self._get_code_list()
+        formats = list()
+        for codes in clist:
+            formats.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
 
-        for codes in code_list:
-            self.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
+        #check separators:
+        if not seps:
+            if not self._allow_no_sep: raise ValueError(self.ERR_MSG % string)
+        #check if it fits a format of self._formats
+        elif len(set(seps)) == 1 and len(seps) < len(values) and seps[0] in self._seps: pass
+        #check if it fits a format of self._special_formats
+        else:
+            common = set(formats) & set(self._special_formats())
+            if common: formats = list(common)
+            else: raise ValueError(self.ERR_MSG % string)
+
+        self.extend(formats)
 
     def _get_code_list(self):
         def get_code(key):
@@ -583,13 +611,15 @@ class DateFormats(BaseFormats):
 
         return code_list
 
-    def _generate(self):
-        """
-        Generates the formats and populate the list-instance.
-        """
-        #TODO: 4. Janurary 2013 does not work... (there will be always a dot after
-        # Janurary.
-        if self: return self
+    def _special_formats(self):
+        #TODO: rework this...
+        formats = list()
+        for l in self.FORMATS[:]:
+            l += [[str()] for x in range(6 - len(l))]
+            formats.extend([a+b+c+d+e+f for a in l[0] for b in l[1] for c in l[2] for d in l[3] for e in l[4] for f in l[5]])
+        return formats
+
+    def _formats(self):
         formats = list()
         code_list = self._get_code_list()
         if self._allow_no_sep: self._seps.append(str())
@@ -597,10 +627,15 @@ class DateFormats(BaseFormats):
             for codes in code_list:
                 format = s.join(codes)
                 formats.append(format)
-                if s == '.':
-                    if len(codes) == 2 and not '%B' in codes: formats.append(format + s)
-                    elif len(codes) == 1: formats.append(format + s)
-        self.extend(formats)
+        return formats
+
+    def _generate(self):
+        """
+        Generates the formats and populate the list-instance.
+        """
+        if self: return
+        self.extend(self._formats())
+        self.extend(self._special_formats())
 
 
 class DatetimeFormats(BaseFormats):
