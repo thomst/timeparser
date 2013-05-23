@@ -283,17 +283,30 @@ class BaseFormats(list):
     * figures[1]: Allows two-digit-formats like '%H:%M'.
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
     """
+    SFORMATS = list()
     ERR_MSG = "no proper format for '%s'"
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
         super(BaseFormats, self).__init__()
+
         self._figures = figures or self.FIGURES[:]
         if isinstance(seps, list): self._seps = seps[:]
         else: self._seps = self.SEPS[:]
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
-        if string: self._evaluate_string(string)
+        self._sformats = self.SFORMATS
+
+        self._check_config()
+
+        if string:
+            self._evaluate_string(string)
+            try: self._check_config()
+            except Exception: ValueError(self.ERR_MSG % string)
+
         self._generate()
+
+    def _check_config(self):
+        if not any(self._figures): raise Exception('invalid configuration')
 
     @classmethod
     def config(cls, seps=None, allow_no_sep=None, figures=None):
@@ -312,6 +325,7 @@ class BaseFormats(list):
         if seps: cls.SEPS = seps
         if not allow_no_sep is None: cls.ALLOW_NO_SEP = allow_no_sep
         if figures: cls.FIGURES = figures
+        if not any(cls.FIGURES): raise Exception('invalid configuration')
 
     def _evaluate_string(self, string):
         """
@@ -320,22 +334,6 @@ class BaseFormats(list):
         string. E.g. if string is '23:44:02' only formats with ':' as separator
         are produced.
         """
-        try: sep = [s for s in self._seps if s in string][0]
-        except IndexError:
-            if self._allow_no_sep: self._seps = list()
-            elif self._figures[0]: self._figures = [True, False, False]
-            else: raise ValueError(self.ERR_MSG % string)
-        else:
-            self._allow_no_sep = False
-            self._seps = [sep]
-            figures = len(string.strip(sep).split(sep))
-            if self._figures[2] and figures == 3:
-                self._figures = [False, False, True]
-            elif self._figures[1] and figures == 2:
-                self._figures = [False, True, False]
-            elif self._figures[0] and figures == 1:
-                self._figures = [True, False, False]
-            else: raise ValueError(self.ERR_MSG % string)
 
     def _get_code_list(self):
         """
@@ -343,18 +341,38 @@ class BaseFormats(list):
         These code-lists will be joined to format-strings by self._generate().
         """
 
-    def _generate(self):
-        """
-        Generates the formats and populate the list-instance.
-        """
+    def _special_formats(self):
+        #TODO: rework this...
+        formats = list()
+        for l in self._sformats:
+            l += [[str()] for x in range(6 - len(l))]
+            formats.extend([
+                a+b+c+d+e+f
+                for a in l[0]
+                for b in l[1]
+                for c in l[2]
+                for d in l[3]
+                for e in l[4]
+                for f in l[5]
+                ])
+        return formats
+
+    def _formats(self):
         formats = list()
         code_list = self._get_code_list()
         if self._allow_no_sep: self._seps.append(str())
         for s in self._seps:
             for codes in code_list:
-                format = s.join(codes)
-                formats.append(format)
-        self.extend(formats)
+                formats.append(s.join(codes))
+        return formats
+
+    def _generate(self):
+        """
+        Generates the formats and populate the list-instance.
+        """
+        if self: return     #if _evaluate_string already produced formats
+        if self._seps or self._allow_no_sep: self.extend(self._formats())
+        if self._sformats: self.extend(self._special_formats())
 
 
 class TimeFormats(BaseFormats):
@@ -415,6 +433,29 @@ class TimeFormats(BaseFormats):
         if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
 
+    def _evaluate_string(self, string):
+        """
+        While the generic parameters predict the range of all possible formats,
+        the string (if given) is used to precice this range for the specific
+        string. E.g. if string is '23:44:02' only formats with ':' as separator
+        are produced.
+        """
+        fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
+
+        try: sep = [s for s in self._seps if s in string][0]
+        except IndexError:
+            if self._allow_no_sep: self._seps = list()
+            elif self._figures[0]: self._figures = [True, False, False]
+            else: raise ValueError(self.ERR_MSG % string)
+        else:
+            self._allow_no_sep = False
+            self._seps = [sep]
+            figures = len(string.strip(sep).split(sep))
+            if figures == 3: self._figures = fmask([False, False, True])
+            elif figures == 2: self._figures = fmask([False, True, False])
+            elif figures == 1: self._figures = fmask([True, False, False])
+            else: raise ValueError(self.ERR_MSG % string)
+
     def _get_code_list(self):
         code_list = list()
         if self._figures[0]: code_list.append(self.CODES[:1])
@@ -465,7 +506,7 @@ class DateFormats(BaseFormats):
     YEAR_CODE = [True, True]
 
     #TODO: these are endian-specific...
-    FORMATS = [
+    SFORMATS = [
         [['%d'], ['.']],
         [['%d'], ['.', '. '], ['%m', '%b'], ['.']],
         [['%d'], ['.'], ['%m', '%b'], ['. '], ['%y', '%Y']],
@@ -486,7 +527,6 @@ class DateFormats(BaseFormats):
         else: self.endian = ENDIAN
         ###########
         super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
-        self._check_config()
 
     @classmethod
     def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
@@ -566,10 +606,6 @@ class DateFormats(BaseFormats):
                     elif len(value) >= 7: self._year_code = ymask([False, True])
         else: raise ValueError(self.ERR_MSG % string)
 
-        #check config:
-        try: self._check_config()
-        except Exception: raise ValueError(self.ERR_MSG % string)
-
         #TODO: maybe building a format-list and checking it against the lists in
         #self.FORMATES (item by item). Then let _generate building the formats.
         clist = self._get_code_list()
@@ -579,7 +615,8 @@ class DateFormats(BaseFormats):
 
         #check separators:
         if not seps:
-            if not self._allow_no_sep: raise ValueError(self.ERR_MSG % string)
+            if self._allow_no_sep: pass
+            else: raise ValueError(self.ERR_MSG % string)
         #check if it fits a format of self._formats
         elif len(set(seps)) == 1 and len(seps) < len(values) and seps[0] in self._seps: pass
         #check if it fits a format of self._special_formats
@@ -611,31 +648,6 @@ class DateFormats(BaseFormats):
 
         return code_list
 
-    def _special_formats(self):
-        #TODO: rework this...
-        formats = list()
-        for l in self.FORMATS[:]:
-            l += [[str()] for x in range(6 - len(l))]
-            formats.extend([a+b+c+d+e+f for a in l[0] for b in l[1] for c in l[2] for d in l[3] for e in l[4] for f in l[5]])
-        return formats
-
-    def _formats(self):
-        formats = list()
-        code_list = self._get_code_list()
-        if self._allow_no_sep: self._seps.append(str())
-        for s in self._seps:
-            for codes in code_list:
-                format = s.join(codes)
-                formats.append(format)
-        return formats
-
-    def _generate(self):
-        """
-        Generates the formats and populate the list-instance.
-        """
-        if self: return
-        self.extend(self._formats())
-        self.extend(self._special_formats())
 
 
 class DatetimeFormats(BaseFormats):
