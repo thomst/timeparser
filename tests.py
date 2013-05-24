@@ -104,19 +104,19 @@ class TodayTests(unittest.TestCase):
 
     def test_endian(self):
         today = timeparser.TODAY
-        self.assertEqual(today.dateobj, datetime.date.today())
+        self.assertEqual(today, datetime.date.today())
         today.set()
-        self.assertEqual(today.dateobj, datetime.date.today())
+        self.assertEqual(today, datetime.date.today())
         today.set(1,2,3)
-        self.assertEqual(today.dateobj, datetime.date(1,2,3))
+        self.assertEqual(today, datetime.date(1,2,3))
 
     def test_deprecated(self):
         today = timeparser.TODAY
-        self.assertEqual(today.dateobj, datetime.date.today())
+        self.assertEqual(today, datetime.date.today())
         timeparser.setToday()
-        self.assertEqual(today.dateobj, datetime.date.today())
+        self.assertEqual(today, datetime.date.today())
         timeparser.setToday(datetime.date(1,2,3))
-        self.assertEqual(today.dateobj, datetime.date(1,2,3))
+        self.assertEqual(today, datetime.date(1,2,3))
 
 
 if __name__ == '__main__':

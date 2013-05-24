@@ -116,21 +116,9 @@ class Today:
         """
         if args or kwargs: self._dateobj = datetime.date(*args, **kwargs)
         else: self._dateobj = datetime.date.today()
+        for a in ('month', 'year', 'day', 'replace', '__repr__', '__eq__'):
+            setattr(self, a, getattr(self._dateobj, a))
 
-    @property
-    def dateobj(self): return self._dateobj
-
-    @property
-    def year(self): return self._dateobj.year
-
-    @property
-    def month(self): return self._dateobj.month
-
-    @property
-    def day(self): return self._dateobj.day
-
-    def __repr__(self):
-        return 'TODAY(%s, %s, %s)' % (self.year, self.month, self.day)
 
 TODAY = Today()
 """
@@ -177,12 +165,6 @@ class Endian:
         )
     def __init__(self): self.set()
 
-    def __iter__(self): return self.OPTIONS[self._key].__iter__()
-
-    def __getitem__(self, key): return self.OPTIONS[self._key].__getitem__(key)
-
-    def __repr__(self): return str(self.OPTIONS[self._key])
-
     def set(self, key=None):
         """
         Set ENDIAN to little-, big- or middle-endian.
@@ -193,6 +175,8 @@ class Endian:
         If key is None the local-default-order is guessed.
         """
         self._key = self._check_key(key) or self._guess()
+        for m in ('__iter__', '__getitem__', '__repr__', 'index'):
+            setattr(self, m, getattr(self.OPTIONS[self._key], m))
 
     def get(self, key=None, no_year=False):
         key = self._check_key(key) or self._key
@@ -202,9 +186,6 @@ class Endian:
         endian = self.__class__()
         endian.set(self._check_key(key) or self._key)
         return endian
-
-    def index(self, item):
-        return self.OPTIONS[self._key].index(item)
 
     @classmethod
     def _check_key(cls, key):
