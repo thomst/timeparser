@@ -267,6 +267,7 @@ class BaseFormats(list):
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
     """
     SFORMATS = list()
+    SUFFIX = list()
     ERR_MSG = "no proper format for '%s'"
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
@@ -278,6 +279,7 @@ class BaseFormats(list):
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
         self._sformats = self.SFORMATS
+        self._suffix = self.SUFFIX
 
         self._check_config()
 
@@ -328,15 +330,16 @@ class BaseFormats(list):
         #TODO: rework this...
         formats = list()
         for l in self._sformats:
-            l += [[str()] for x in range(6 - len(l))]
+            l += [[str()] for x in range(7 - len(l))]
             formats.extend([
-                a+b+c+d+e+f
+                a+b+c+d+e+f+g
                 for a in l[0]
                 for b in l[1]
                 for c in l[2]
                 for d in l[3]
                 for e in l[4]
                 for f in l[5]
+                for g in l[6]
                 ])
         return formats
 
@@ -375,7 +378,6 @@ class TimeFormats(BaseFormats):
     :type allow_microsec:       bool
     """
     CODES = ['%H', '%M', '%S', '%f']
-    MICROSEC_SEPS = ['.', ' ']          #TODO: make it configurable as well
     SEPS = [':', ' ']
     """A list of separators, formats are produced with."""
     ALLOW_NO_SEP = True
@@ -391,7 +393,15 @@ class TimeFormats(BaseFormats):
     """
     ALLOW_MICROSEC = False
     """Allows formats with microseconds (%f)."""
-    #TODO: what about a suffix like 'h'?
+    SFORMATS = [
+        [['%H'], [':'], ['%M'], [':'], ['%S'], ['h', ' h']],
+        [['%H'], [':', ''], ['%M'], ['h', ' h']],
+        [['%H'], ['h', ' h']],
+        ]
+    MFORMATS = [
+        [['%H'], [':'], ['%M'], [':'], ['%S'], ['.'], ['%f']],
+        [['%H'], [''], ['%M'], [''], ['%S'], ['.'], ['%f']],
+        ]
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
                 allow_microsec=None):
@@ -446,10 +456,11 @@ class TimeFormats(BaseFormats):
         if self._figures[0]: code_list.append(self.CODES[:1])
         if self._figures[1]: code_list.append(self.CODES[:2])
         if self._figures[2]: code_list.append(self.CODES[:3])
-        if self._allow_microsec:
-            for sep in self.MICROSEC_SEPS:
-                code_list.append(self.CODES[:2] + [sep.join(self.CODES[2:])])
         return code_list
+
+    def _special_formats(self):
+        if self._allow_microsec: self._sformats += self.MFORMATS
+        return super(TimeFormats, self)._special_formats()
 
 
 class DateFormats(BaseFormats):
@@ -532,7 +543,6 @@ class DateFormats(BaseFormats):
             cls.MONTH_CODE = [True, False, False]
         elif allow_month_name is True:
             cls.MONTH_CODE = [True, True, True]
-        #TODO: check class-config
 
         #deprecated:
         if endian: ENDIAN.set(endian)
@@ -570,7 +580,6 @@ class DateFormats(BaseFormats):
 
         #check values:
         if len(values) == 3:
-            #TODO: doesn't work for big-endian
             if len(values[self.endian.index('year')]) == 2: self._year_code = ymask([True, False])
             else: self._year_code = ymask([False, True])
             self._figures = fmask([False, False, True])
