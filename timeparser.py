@@ -267,7 +267,6 @@ class BaseFormats(list):
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
     """
     SFORMATS = list()
-    SUFFIX = list()
     ERR_MSG = "no proper format for '%s'"
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
@@ -279,7 +278,6 @@ class BaseFormats(list):
         if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
         self._sformats = self.SFORMATS
-        self._suffix = self.SUFFIX
 
         self._check_config()
 
@@ -436,19 +434,38 @@ class TimeFormats(BaseFormats):
         """
         fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
 
-        #TODO: reworking this...
-        try: sep = [s for s in self._seps if s in string][0]
-        except IndexError:
-            if self._allow_no_sep: self._seps = list()
-            elif self._figures[0]: self._figures = [True, False, False]
-            else: raise ValueError(self.ERR_MSG % string)
-        else:
+        digits = re.findall('[\d]+', string)
+        nondigit = re.findall('[\D]+', string)
+
+        if len(digits) >= 3: self._figures = fmask([False, False, True])
+        elif len(digits) == 2: self._figures = fmask([False, True, False])
+        elif len(digits) == 1:
+            if self._allow_no_sep:
+                v = digits[0]
+                if len(v) >= 5: self._figures = fmask([False, False, True])
+                elif 3 <= len(v) <= 4: self._figures = fmask([False, True, True])
+                elif len(v) == 2: self._figures = fmask([True, True, False])
+                elif len(v) == 1: self._figures = fmask([True, False, False])
+            else: self._figures = fmask([True, False, False])
+        else: raise ValueError(self.ERR_MSG % string)
+
+        if not nondigit and self._allow_no_sep:
+            self._seps = list()
+            self.extend(self._formats())
+        elif len(set(nondigit)) == 1 and nondigit[0] in self._seps:
+            self._seps = [nondigit[0]]
             self._allow_no_sep = False
-            self._seps = [sep]
-            figures = len(string.strip(sep).split(sep))
-            if figures == 3: self._figures = fmask([False, False, True])
-            elif figures == 2: self._figures = fmask([False, True, False])
-            elif figures == 1: self._figures = fmask([True, False, False])
+            self.extend(self._formats())
+        else:
+            if self._allow_microsec and len(digits) == 4: clist = [self.CODES[:]]
+            else: clist = self._get_code_list()
+            formats = list()
+            for codes in clist:
+                if len(digits) == 1: codes = [''.join(codes)]
+                formats.append(''.join(map(lambda v,s: v+s if s else v, codes, nondigit)))
+
+            common = set(formats) & set(self._special_formats())
+            if common: self.extend(list(common))
             else: raise ValueError(self.ERR_MSG % string)
 
     def _get_code_list(self):
