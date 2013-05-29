@@ -57,6 +57,12 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(parser('24', today=today), date(today.year, today.month, 24))
         self.assertEqual(parser('243', today=today), date(today.year, 3, 24))
 
+        timeparser.ENDIAN.set('big')
+        self.assertEqual(parser('13 jan 4.'), date(2013, 1, 4))
+        self.assertEqual(parser('jan 4.', today=today), date(today.year, 1, 4))
+        self.assertEqual(parser('1. 4.', today=today), date(today.year, 1, 4))
+        self.assertEqual(parser('13 1.4.'), date(2013, 1, 4))
+
     def test_parsedatetime(self):
         parser = timeparser.parsedatetime
         dtime = datetime.datetime
@@ -87,16 +93,6 @@ class EndianTests(unittest.TestCase):
         endian.set('m')
         self.assertEqual(endian[0], 'month')
 
-    def test_deprecated(self):
-        endian = timeparser.ENDIAN
-        timeparser.setEndian('l')
-        self.assertEqual(endian[0], 'day')
-        timeparser.setEndian('b')
-        self.assertEqual(endian[0], 'year')
-        timeparser.setEndian('m')
-        self.assertEqual(timeparser.DateFormats(endian='l').endian[1], 'month')
-        self.assertEqual(endian[0], 'month')
-
 
 class TodayTests(unittest.TestCase):
     def setUp(self):
@@ -110,13 +106,6 @@ class TodayTests(unittest.TestCase):
         today.set(1,2,3)
         self.assertEqual(today, datetime.date(1,2,3))
 
-    def test_deprecated(self):
-        today = timeparser.TODAY
-        self.assertEqual(today, datetime.date.today())
-        timeparser.setToday()
-        self.assertEqual(today, datetime.date.today())
-        timeparser.setToday(datetime.date(1,2,3))
-        self.assertEqual(today, datetime.date(1,2,3))
 
 
 if __name__ == '__main__':

@@ -178,7 +178,7 @@ class Endian:
         for m in ('__iter__', '__getitem__', '__repr__', 'index'):
             setattr(self, m, getattr(self.OPTIONS[self._key], m))
 
-    def get(self, key=None, no_year=False):
+    def get(self, no_year=False, key=None):
         key = self._check_key(key) or self._key
         if no_year:
             if key in ['little', 'middle']: return self.OPTIONS[key][:-1]
@@ -517,31 +517,40 @@ class DateFormats(BaseFormats):
     MONTH_CODE = [True, True, True]
     YEAR_CODE = [True, True]
 
-    #TODO: these are endian-specific...
-    SFORMATS = [
-        [['%d'], ['.']],
-        [['%d'], ['.', '. '], ['%m', '%b'], ['.']],
-        [['%d'], ['.'], ['%m', '%b'], ['. '], ['%y', '%Y']],
-        [['%d'], ['.', '. '], ['%b', '%B'], [' '], ['%y', '%Y']],
-        ]
+    SFORMATS_OPTIONS = {
+        'little' : [
+            [['%d'], ['.']],
+            [['%d'], ['.', '. '], ['%m', '%b'], ['.']],
+            [['%d'], ['.'], ['%m', '%b'], ['. '], ['%y', '%Y']],
+            [['%d'], ['.', '. '], ['%b', '%B'], [' '], ['%y', '%Y']],
+            ],
+        'big' : [
+            [['%d'], ['.']],
+            [['%m', '%b'], ['.', '. '], ['%d'], ['.']],
+            [['%b', '%B'], [' '], ['%d'], ['.']],
+            [['%y', '%Y'], [' '], ['%m', '%b'], ['.', '. '], ['%d'], ['.']],
+            [['%y', '%Y'], [' '], ['%b', '%B'], [' '], ['%d'], ['.']],
+            ],
+        'middle' : [
+            ]
+        }
+
+    SFORMATS = list()
 
     def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_month_name=None, endian=None):
+                allow_month_name=None):
         if allow_month_name is False:
             self._month_code = [True, False, False]
         elif allow_month_name is True:
             self._month_code = [True, True, True]
         else: self._month_code = self.MONTH_CODE
         self._year_code = self.YEAR_CODE
+        self.SFORMATS = self.SFORMATS_OPTIONS[ENDIAN._key]
 
-        #deprecated:
-        if endian: self.endian = ENDIAN.get(endian)
-        else: self.endian = ENDIAN
-        ###########
         super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
 
     @classmethod
-    def config(cls, allow_month_name=None, endian=None, *args, **kwargs):
+    def config(cls, allow_month_name=None, *args, **kwargs):
         """
         Modify class-configuration.
 
@@ -559,10 +568,6 @@ class DateFormats(BaseFormats):
             cls.MONTH_CODE = [True, False, False]
         elif allow_month_name is True:
             cls.MONTH_CODE = [True, True, True]
-
-        #deprecated:
-        if endian: ENDIAN.set(endian)
-        ###########
 
         super(DateFormats, cls).config(*args, **kwargs)
         for c in [cls.MONTH_CODE, cls.YEAR_CODE]:
@@ -596,7 +601,7 @@ class DateFormats(BaseFormats):
 
         #check values:
         if len(values) == 3:
-            if len(values[self.endian.index('year')]) == 2: self._year_code = ymask([True, False])
+            if len(values[ENDIAN.index('year')]) == 2: self._year_code = ymask([True, False])
             else: self._year_code = ymask([False, True])
             self._figures = fmask([False, False, True])
         elif len(values) == 2: self._figures = fmask([False, True, False])
@@ -616,7 +621,6 @@ class DateFormats(BaseFormats):
                     elif len(value) >= 7: self._year_code = ymask([False, True])
             else: raise ValueError(self.ERR_MSG % string)
         else: raise ValueError(self.ERR_MSG % string)
-
 
         #check separators:
         if not seps and self._allow_no_sep:
@@ -650,10 +654,10 @@ class DateFormats(BaseFormats):
         code_list = list()
         if self._figures[0]: code_list.append(get_code('day'))
         if self._figures[1]:
-            cc = map(get_code, self.endian.get(no_year=True))
+            cc = map(get_code, ENDIAN.get(no_year=True))
             code_list.extend([(x,y) for x in cc[0] for y in cc[1]])
         if self._figures[2]:
-            cc = map(get_code, self.endian)
+            cc = map(get_code, ENDIAN)
             code_list.extend([(x,y,z) for x in cc[0] for y in cc[1] for z in cc[2]])
 
         return code_list
