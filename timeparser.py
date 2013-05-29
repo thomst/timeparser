@@ -78,19 +78,6 @@ import warnings
 warnings.simplefilter('default')
 
 
-#deprecated! For backwards-compatibility only
-LITTLE_ENDIAN = 'little'
-BIG_ENDIAN = 'big'
-MIDDLE_ENDIAN = 'middle'
-def setEndian(key):
-    warnings.warn('setEndian is deprecated; use ENDIAN.set', DeprecationWarning)
-    ENDIAN.set(key)
-
-def setToday(date=None):
-    warnings.warn('setToday is deprecated; use TODAY.set', DeprecationWarning)
-    if date: TODAY.set(date.year, date.month, date.day)
-    else: TODAY.set()
-####***####
 
 class Today:
     """
@@ -282,10 +269,10 @@ class BaseFormats(list):
         self._check_config()
 
         if string:
-            self._evaluate_string(string)
+            self._for_string(string)
             try: self._check_config()
             except Exception: ValueError(self.ERR_MSG % string)
-        else: self._generate()
+        else: self._all()
 
     def _check_config(self):
         if not any(self._figures): raise Exception('invalid configuration')
@@ -309,7 +296,7 @@ class BaseFormats(list):
         if figures: cls.FIGURES = figures
         if not any(cls.FIGURES): raise Exception('invalid configuration')
 
-    def _evaluate_string(self, string):
+    def _for_string(self, string):
         """
         While the generic parameters predict the range of all possible formats,
         the string (if given) is used to precice this range for the specific
@@ -320,7 +307,7 @@ class BaseFormats(list):
     def _get_code_list(self):
         """
         Builds and returns a list of code-lists (like ['%d', '%b', '%Y']).
-        These code-lists will be joined to format-strings by self._generate().
+        These code-lists will be joined to format-strings by self._all().
         """
 
     def _special_formats(self):
@@ -349,11 +336,10 @@ class BaseFormats(list):
                 formats.append(s.join(codes))
         return formats
 
-    def _generate(self):
+    def _all(self):
         """
         Generates the formats and populate the list-instance.
         """
-#        if self: return     #if _evaluate_string already produced formats
         if self._seps or self._allow_no_sep: self.extend(self._formats())
         if self._sformats: self.extend(self._special_formats())
 
@@ -424,7 +410,7 @@ class TimeFormats(BaseFormats):
         if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
         super(TimeFormats, cls).config(*args, **kwargs)
 
-    def _evaluate_string(self, string):
+    def _for_string(self, string):
         """
         While the generic parameters predict the range of all possible formats,
         the string (if given) is used to precice this range for the specific
@@ -577,10 +563,10 @@ class DateFormats(BaseFormats):
         for c in [self._month_code, self._year_code, self._figures]:
             if not any(c): raise Exception('invalid configuration')
 
-    def _evaluate_string(self, string):
+    def _for_string(self, string):
         """
         Checks string for literal month-name and calls the
-        super-class-_evaluate_string-method.
+        super-class-_for_string-method.
         """
         values = re.findall('[^\W_]+', string)
         seps = re.findall('[\W_]+', string)
@@ -720,75 +706,59 @@ class DatetimeFormats(BaseFormats):
         """
         super(DatetimeFormats, self).config(*args, **kwargs)
 
-    def _evaluate_string(self, string):
+    def _for_string(self, string):
         """
         Try to reduce the amount of seps for all three format-classes.
         time-seps and date-seps will be passed to the respective constructor.
         """
-        #TODO: reduce the combinations to a sensible range! E.g. don't allow
-        # non-separated formats with seperation within the date or time.
-        _used = re.findall('[_\W]+', string)
-
-        # what if string is '24.3. 22:30'?
+        formats = list()
+        pairs = list()
         for s in self._seps:
-            for u in _used[:2]:
-                if u.startswith('.') and u.endswith(s):
-                    index = _used.index(u)
-                    _used[index] = '.'
-                    _used.insert(index + 1, s)
+            i = 0
+            while i <= len(string):
+                try: i = string.index(s, i+1)
+                except ValueError: break
+                else: pairs.append((string[:i], s, string[i:].strip(s)))
 
-        used = [s for i,s in enumerate(_used) if not s in _used[:i]]
-        date_seps = set(self._date_config['seps']) & set(used)
-        time_seps = set(self._time_config['seps']) & set(used)
-        seps = set(self._seps) & set(used)
-
-        #first check the usage of wrong separators
-        if not set(used) <= date_seps | time_seps | seps:
-            raise ValueError("no proper format for '%s'" % string)
-
-        common = seps & (date_seps | time_seps)
-        wanted = seps - (date_seps | time_seps)
-
-        self._date_config['seps'] = list(date_seps)
-        self._time_config['seps'] = list(time_seps)
-        self._seps = list(seps)
-
-        if len(wanted) == 1:
-            self._allow_no_sep = False
-            self._seps = list(wanted)
-        elif len(used) >= 3:
-            self._allow_no_sep = False
-            self._seps = used[1:2]
-        elif not wanted:
-            if common: self._seps = list(common)
+        if not pairs:
+            if not self._allow_no_sep: raise ValueError(self.ERR_MSG % string)
+            elif re.findall('[_\W]+', string): raise ValueError(self.ERR_MSG % string)
             else:
-                if self._allow_no_sep: self._seps = list()
-                else: raise ValueError("no proper format for '%s'" % string)
-        else: raise ValueError("no proper format for '%s'" % string)
+                i = len(string)
+                while i > 1:
+                    i -= 1
+                    pairs.append((string[:i], str(), string[i:]))
 
-        if not self._allow_no_sep and len(self._seps) == 1:
-            datestring, timestring = string.split(self._seps[0])
-            self._date_config['string'] = datestring
-            self._time_config['string'] = timestring
-        else:
-            #if string couldn't be splitted at least refine the config...
-            if not re.search('[a-zA-Z]+', string):
-                self._date_config['allow_month_name'] = False
+        for d, s, t in pairs:
+            try:
+                df = DateFormats(d)
+                tf = TimeFormats(t)
+            except ValueError: continue
+            else: formats.extend([d + s + t for d in df for t in tf])
 
-        self._generate()
+        self.extend([f for i,f in enumerate(formats) if not f in formats[:i]])
 
-
-    def _generate(self):
+    def _all(self):
         """
         Generate datetime-formats by combining date- and time-formats.
         """
         formats = list()
         date_fmt = DateFormats(**self._date_config)
         time_fmt = TimeFormats(**self._time_config)
-        if self._allow_no_sep: self._seps.append(str())
         for s in self._seps:
             formats += [s.join((d, t)) for d in date_fmt for t in time_fmt]
         self.extend(formats)
+        if self._allow_no_sep:
+            formats = list()
+            #TODO: warrant that no sformats are included
+            self._date_config['allow_no_sep'] = True
+            self._time_config['allow_no_sep'] = True
+            self._date_config['seps'] = list()
+            self._time_config['seps'] = list()
+            date_fmt = DateFormats(**self._date_config)
+            time_fmt = TimeFormats(**self._time_config)
+            formats += [str().join((d, t)) for d in date_fmt for t in time_fmt]
+            self.extend(formats)
 
 
 
