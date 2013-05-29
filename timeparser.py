@@ -18,10 +18,8 @@ Now suppose you don't want to allow parsing strings with literal month-names:
 
 Most of the time you will use `format-classes`_ only to alter their configuration.
 The `parser-functions`_ (except :func:`parsetimedelta`) use the `format-classes`_
-to recieve a list of format-strings and for every format they try to call
-:meth:`datetime.datetime.strptime` with the given string. As soon as the string
-could be parsed that way the resulting :mod:`datetime`-whatever-objects will be
-returned.
+to recieve a list of format-strings and try to parse the string with them using
+:meth:`datetime.datetime.strptime`.
 
 :func:`parsetimedelta` breaks with that concept. It don't need format-strings at
 all and has his own :func:`logic <parsetimedelta>`.
@@ -47,25 +45,29 @@ or change the default-configuration on class-level:
 Both will result in the same list of formats, but the former way doesn't touch
 the default-configuration.
 
-And they provide another important feature:
+If you just call the constructor the format-class will produce a list of all
+formats for the actual configuration:
 
-In the default-configuration ``DateFormats()`` will produce ``46`` formats, while
-``DatetimeFormats()`` comes up to ``1610``. Consider you have all these formats
-the `parser-functions`_ have to loop over. This could be quit expensive. Therefore the
-`format-classes`_ are able to pre-select formats accordingly to the characteristics
-of the string, that should be parsed:
+    >>> formats = DateFormats()
+    >>> len(formats)
+    77
 
-    >>> DateFormats('3.4.2013')
-    ['%d.%m.%y', '%d.%m.%Y']
-    >>> DatetimeFormats('03.04.13_22:30')
-    ['%d.%m.%y_%H:%M', '%d.%m.%Y_%H:%M']
+But if you look for formats for a specific string you can pass the string to the
+constructor:
 
-You see that passing a string as first argument to the constructor will result
-in a very reduced list of format-strings (while not touching the generell range
-of supported formats.)
+    >>> DateFormats('3 Jan 2013')
+    ['%d %b %Y']
 
-The `parser-functions`_ make use of this: calling ``parsedate('3 Jan')`` is actually
-the same as ``parsedate('3 Jan', formats=DateFormats('3 Jan'))``.
+That is what the `parser-functions`_ do to minimize the amount of formats they
+have to try to parse the string with.
+
+Producing formats for a specific string also respects the current setting:
+
+    >>> set(DateFormats('3 Jan 2013')) < set(DateFormats())
+    True
+    >>> DateFormats.config(allow_month_name=False)
+    >>> DateFormats('3 jan 2013')
+    ValueError: no proper format for '3 jan 2013'
 """
 
 import datetime
@@ -241,6 +243,9 @@ class BaseFormats(list):
     :type seps:                 list
     :type allow_no_sep:         bool
     :type figures:              list
+
+    :raises:                    ValueError if no format could be produced for
+                                *string*.
     """
     ALLOW_NO_SEP = True
     """Allows formats without any separator ('%H%M%S')."""
@@ -271,7 +276,7 @@ class BaseFormats(list):
         if string:
             self._for_string(string)
             try: self._check_config()
-            except Exception: ValueError(self.ERR_MSG % string)
+            except Exception: raise ValueError(self.ERR_MSG % string)
         else: self._all()
 
     def _check_config(self):
@@ -359,6 +364,9 @@ class TimeFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type figures:              list
     :type allow_microsec:       bool
+
+    :raises:                    ValueError if no format could be produced for
+                                *string*.
     """
     CODES = ['%H', '%M', '%S', '%f']
     SEPS = [':', ' ']
@@ -480,6 +488,9 @@ class DateFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type figures:              list
     :type allow_month_name:     bool
+
+    :raises:                    ValueError if no format could be produced for
+                                *string*.
     """
     CODES = ['%d', '%m', '%y']
     CODE_DICT = {
@@ -665,6 +676,9 @@ class DatetimeFormats(BaseFormats):
     :type allow_no_sep:         bool
     :type date_config:          dict
     :type time_config:          dict
+
+    :raises:                    ValueError if no format could be produced for
+                                *string*.
     """
     SEPS = [' ', ',', '_', ';']
     """A list of separators, formats are produced with."""
