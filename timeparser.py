@@ -79,7 +79,7 @@ import inspect
 import warnings
 warnings.simplefilter('default')
 
-
+__version__ = '0.6.0'
 
 class Today:
     """
@@ -226,6 +226,7 @@ On creation a local-default-order is guessed, but could be changed through
 """
 
 
+#TODO: implement a try-hard-option for generating string-specific formats.
 class BaseFormats(list):
     """
     Base-class for format-classes; inherit from :class:`list`.
@@ -442,6 +443,7 @@ class TimeFormats(BaseFormats):
             else: self._figures = fmask([True, False, False])
         else: raise ValueError(self.ERR_MSG % string)
 
+        #TODO: This could be generelized for TimeFormats and DateFormats.
         if not nondigit and self._allow_no_sep:
             self._seps = list()
             self.extend(self._formats())

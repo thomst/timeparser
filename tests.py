@@ -3,6 +3,8 @@ import datetime
 import timeparser
 
 
+#TODO: write more tests!
+
 class ParserTests(unittest.TestCase):
     def setUp(self):
         timeparser.ENDIAN.set('little')
