@@ -285,8 +285,7 @@ class BaseFormats(list):
             self._evaluate_string(string)
             try: self._check_config()
             except Exception: ValueError(self.ERR_MSG % string)
-
-        self._generate()
+        else: self._generate()
 
     def _check_config(self):
         if not any(self._figures): raise Exception('invalid configuration')
@@ -354,7 +353,7 @@ class BaseFormats(list):
         """
         Generates the formats and populate the list-instance.
         """
-        if self: return     #if _evaluate_string already produced formats
+#        if self: return     #if _evaluate_string already produced formats
         if self._seps or self._allow_no_sep: self.extend(self._formats())
         if self._sformats: self.extend(self._special_formats())
 
@@ -604,7 +603,7 @@ class DateFormats(BaseFormats):
         elif len(values) == 1:
             value = values[0]
             if seps: self._figures = fmask([True, False, False])
-            elif not seps:
+            elif not seps and self._allow_no_sep:
                 if any(self._month_code[1:]):
                     if value[-1].isalpha(): self._figures = fmask([False, True, False])
                     else: self._figures = fmask([False, False, True])
@@ -615,28 +614,28 @@ class DateFormats(BaseFormats):
                     else: self._figures = fmask([False, False, True])
                     if len(value) <= 5: self._year_code = ymask([True, False])
                     elif len(value) >= 7: self._year_code = ymask([False, True])
+            else: raise ValueError(self.ERR_MSG % string)
         else: raise ValueError(self.ERR_MSG % string)
 
-        #TODO: maybe building a format-list and checking it against the lists in
-        #self.FORMATES (item by item). Then let _generate building the formats.
-        clist = self._get_code_list()
-        formats = list()
-        for codes in clist:
-            formats.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
 
         #check separators:
-        if not seps:
-            if self._allow_no_sep: pass
-            else: raise ValueError(self.ERR_MSG % string)
+        if not seps and self._allow_no_sep:
+            self._seps = list()
+            self.extend(self._formats())
         #check if it fits a format of self._formats
-        elif len(set(seps)) == 1 and len(seps) < len(values) and seps[0] in self._seps: pass
+        elif len(set(seps)) == 1 and len(seps) < len(values) and seps[0] in self._seps:
+            self._seps = [seps[0]]
+            self._allow_no_sep = False
+            self.extend(self._formats())
         #check if it fits a format of self._special_formats
         else:
+            clist = self._get_code_list()
+            formats = list()
+            for codes in clist:
+                formats.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
             common = set(formats) & set(self._special_formats())
-            if common: formats = list(common)
+            if common: self.extend(list(common))
             else: raise ValueError(self.ERR_MSG % string)
-
-        self.extend(formats)
 
     def _get_code_list(self):
         def get_code(key):
@@ -771,6 +770,9 @@ class DatetimeFormats(BaseFormats):
             #if string couldn't be splitted at least refine the config...
             if not re.search('[a-zA-Z]+', string):
                 self._date_config['allow_month_name'] = False
+
+        self._generate()
+
 
     def _generate(self):
         """
