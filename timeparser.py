@@ -431,7 +431,10 @@ class TimeFormats(BaseFormats):
         digits = re.findall('[\d]+', string)
         nondigit = re.findall('[\D]+', string)
 
-        if len(digits) >= 3: self._figures = fmask([False, False, True])
+        #TODO: seperate the concepts of parser with _formats and _sformats more
+        # accurate.
+
+        if 4 >= len(digits) >= 3: self._figures = fmask([False, False, True])
         elif len(digits) == 2: self._figures = fmask([False, True, False])
         elif len(digits) == 1:
             if self._allow_no_sep:

@@ -27,7 +27,15 @@ class ParserTests(unittest.TestCase):
         timeparser.TimeFormats.config(allow_no_sep=False)
         self.assertRaises(ValueError, timeparser.parsetime, '2344')
         timeparser.DateFormats.config(allow_month_name=False)
-        self.assertRaises(ValueError, timeparser.parsedate, '24 Apr 2013')
+        self.assertRaises(ValueError, timeparser.parsedate, '20:00 24 Apr 2013')
+        self.assertRaises(ValueError, timeparser.parsetime, '23.Jan 2012 0:27')
+        self.assertRaises(ValueError, timeparser.parsedate, 'bla blub foo bar')
+        self.assertRaises(ValueError, timeparser.parsedatetime, '13.04.24#23:44')
+        self.assertRaises(ValueError, timeparser.parsedate, 'one two three four')
+        self.assertRaises(ValueError, timeparser.parsetime, '3 4.4 1:55 yes 2013.04.24 2013-04-24_01:55')
+        self.assertRaises(ValueError, timeparser.parsedate, '20:30 4 21:30 5 22:30 6')
+        self.assertRaises(ValueError, timeparser.parsedatetime, '13.04.24#23:44')
+
 
     def test_formatlists(self):
         self.assertIsInstance(timeparser.TimeFormats(), list)
