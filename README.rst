@@ -53,11 +53,11 @@ How to use? ::
     datetime.datetime(2013, 4, 24, 23, 44, 5)
 
 
-Changes in v0.6
+Changes in v0.7
 ---------------
-Removed deprecated stuff.
-Also improved the support for common used formats like dates ending with a dot
-(4.6.) or times ending on 'h' (22:30h).
+The formats-classes accept an keyword try_hard, which means they try
+to build formats for what ever kind of string was passed -regardless
+of any configuration
 
 
 Reporting Bugs
