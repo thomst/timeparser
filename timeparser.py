@@ -79,7 +79,7 @@ import inspect
 import warnings
 warnings.simplefilter('default')
 
-__version__ = '0.6.0'
+__version__ = '0.7.0'
 
 class Today:
     """
