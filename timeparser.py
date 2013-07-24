@@ -226,7 +226,6 @@ On creation a local-default-order is guessed, but could be changed through
 """
 
 
-#TODO: implement a try-hard-option for generating string-specific formats.
 class BaseFormats(list):
     """
     Base-class for format-classes; inherit from :class:`list`.
@@ -262,29 +261,50 @@ class BaseFormats(list):
     SFORMATS = list()
     ERR_MSG = "no proper format for '%s'"
 
-    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None):
+    USE_FORMATS = True
+    USE_SFORMATS = True
+
+    TRY_HARD = False
+
+    @staticmethod
+    def isnone(v): return type(v) == type(None)
+
+    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,\
+                            try_hard=None, use_formats=None, use_sformats=None):
         super(BaseFormats, self).__init__()
 
         self._figures = figures or self.FIGURES[:]
-        if isinstance(seps, list): self._seps = seps[:]
-        else: self._seps = self.SEPS[:]
-        if allow_no_sep is None: self._allow_no_sep = self.ALLOW_NO_SEP
+        if self.isnone(seps): self._seps = self.SEPS[:]
+        else: self._seps = seps[:]
+        if self.isnone(allow_no_sep): self._allow_no_sep = self.ALLOW_NO_SEP
         else: self._allow_no_sep = allow_no_sep
+        if self.isnone(use_formats): self._use_formats = self.USE_FORMATS
+        else: self._use_formats = use_formats
+        if self.isnone(use_sformats): self._use_sformats = self.USE_SFORMATS
+        else: self._use_sformats = use_sformats
+        if self.isnone(try_hard): self._try_hard = self.TRY_HARD
+        else: self._try_hard = try_hard
+
         self._sformats = self.SFORMATS
 
         self._check_config()
 
-        if string:
-            self._for_string(string)
-            try: self._check_config()
-            except Exception: raise ValueError(self.ERR_MSG % string)
-        else: self._all()
+        if string and self._try_hard:
+            self._set_any_formats_for_string(string)
+        elif string:
+            self._set_allowed_formats_for_string(string)
+        else:
+            self._set_all(string)
 
     def _check_config(self):
-        if not any(self._figures): raise Exception('invalid configuration')
+        if not self._use_formats and not self._use_sformats:
+             raise Exception('invalid configuration')
+        if not any(self._figures):
+            raise Exception('invalid configuration')
 
     @classmethod
-    def config(cls, seps=None, allow_no_sep=None, figures=None):
+    def config(cls, seps=None, allow_no_sep=None, figures=None, try_hard=None,
+                    use_formats=None, use_sformats=None):
         """
         Modify class-configuration.
 
@@ -297,18 +317,38 @@ class BaseFormats(list):
         :type allow_no_sep:         bool
         :type figures:              list
         """
+        #TODO: overwork the concept of config: use **kwargs and check the dict
         if seps: cls.SEPS = seps
-        if not allow_no_sep is None: cls.ALLOW_NO_SEP = allow_no_sep
+        if not cls.isnone(allow_no_sep): cls.ALLOW_NO_SEP = allow_no_sep
+        if not cls.isnone(use_formats): cls.USE_FORMATS = use_formats
+        if not cls.isnone(use_sformats): cls.USE_SFORMATS = use_sformats
+        if not cls.isnone(try_hard): cls.TRY_HARD = try_hard
         if figures: cls.FIGURES = figures
         if not any(cls.FIGURES): raise Exception('invalid configuration')
 
-    def _for_string(self, string):
+    def _eval_ingredients(self, string):
+
+        self._alternation = re.findall('[^\W_]+|[\W_]+', string)
+        self._values = re.findall('[^\W_]+', string)
+        self._nonvalues = re.findall('[\W_]+', string)
+
+    def _eval_figures(self):
         """
-        While the generic parameters predict the range of all possible formats,
-        the string (if given) is used to precice this range for the specific
-        string. E.g. if string is '23:44:02' only formats with ':' as separator
-        are produced.
+        Evaluate the figures of the string.
         """
+
+    def _eval_seps_and_formats(self):
+
+        if len(self._values) == 4: self._use_formats = False
+        elif not self._nonvalues and self._allow_no_sep:
+            self._seps = list()
+            self._use_sformats = False
+        elif len(set(self._nonvalues)) == 1 and self._nonvalues[0] in self._seps:
+            self._seps = [self._nonvalues[0]]
+            self._allow_no_sep = False
+            self._use_sformats = False
+        else:
+            self._use_formats = False
 
     def _get_code_list(self):
         """
@@ -316,7 +356,7 @@ class BaseFormats(list):
         These code-lists will be joined to format-strings by self._all().
         """
 
-    def _special_formats(self):
+    def _get_sformats(self):
         #TODO: rework this...
         formats = list()
         for l in self._sformats:
@@ -333,21 +373,47 @@ class BaseFormats(list):
                 ])
         return formats
 
-    def _formats(self):
-        formats = list()
+    def _get_formats(self):
         code_list = self._get_code_list()
+        formats = list()
         if self._allow_no_sep: self._seps.append(str())
         for s in self._seps:
             for codes in code_list:
                 formats.append(s.join(codes))
         return formats
 
-    def _all(self):
-        """
-        Generates the formats and populate the list-instance.
-        """
-        if self._seps or self._allow_no_sep: self.extend(self._formats())
-        if self._sformats: self.extend(self._special_formats())
+    def _get_all(self):
+        formats = list()
+        if self._use_formats: formats.extend(self._get_formats())
+        if self._use_sformats: formats.extend(self._get_sformats())
+        return [f for i, f in enumerate(formats) if not f in formats[:i]]
+
+    def _analyse(self, string):
+
+        self._eval_ingredients(string)
+        self._eval_figures()
+        self._eval_seps_and_formats()
+
+    def _set_any_formats_for_string(self, string):
+
+        self._figures = [True for b in self._figures]
+        self._analyse(string)
+
+        self.extend(self._get_formats_for_string())
+
+    def _set_allowed_formats_for_string(self, string):
+
+        self._analyse(string)
+
+        #don't use set to keep the order
+        str_fmts = self._get_formats_for_string()
+        all_fmts = self._get_all()
+        self.extend([f for f in str_fmts if f in all_fmts])
+
+    def _set_all(self, string):
+
+        self.extend(self._get_all())
+
 
 
 class TimeFormats(BaseFormats):
@@ -374,7 +440,7 @@ class TimeFormats(BaseFormats):
     """A list of separators, formats are produced with."""
     ALLOW_NO_SEP = True
     """Allows formats without any separator ('%H%M%S')."""
-    FIGURES = [True, True, True]
+    FIGURES = [True, True, True, False]
     """
     List of three booleans that predicts how many digits formats are allowed
     to have:
@@ -383,8 +449,6 @@ class TimeFormats(BaseFormats):
     * figures[1]: Allows two-digit-formats like '%H:%M'.
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
     """
-    ALLOW_MICROSEC = False
-    """Allows formats with microseconds (%f)."""
     SFORMATS = [
         [['%H'], [':'], ['%M'], [':'], ['%S'], ['h', ' h']],
         [['%H'], [':', ''], ['%M'], ['h', ' h']],
@@ -395,87 +459,58 @@ class TimeFormats(BaseFormats):
         [['%H'], [''], ['%M'], [''], ['%S'], ['.'], ['%f']],
         ]
 
-    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_microsec=None):
-        if allow_microsec is None: self._allow_microsec = self.ALLOW_MICROSEC
-        else: self._allow_microsec = allow_microsec
-        super(TimeFormats, self).__init__(string, seps, allow_no_sep, figures)
 
-    @classmethod
-    def config(cls, allow_microsec=None, *args, **kwargs):
-        """
-        Modify class-configuration.
+    def _eval_ingredients(self, string):
 
-        :keyword seps:              Allowed separators for formats.
-        :keyword allow_no_sep:      Allows formats without any separator.
-        :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
-        :keyword allow_microsec:    Allowes formats with microseconds (%f)
+        self._values = re.findall('[\d]+', string)
+        self._nonvalues = re.findall('[\D]+', string)
+        self._alternation = re.findall('[\d]+|[\D]+', string)
 
-        :type seps:                 list
-        :type allow_no_sep:         bool
-        :type figures:              list
-        :type allow_microsec:       bool
-        """
-        if not allow_microsec is None: cls.ALLOW_MICROSEC = allow_microsec
-        super(TimeFormats, cls).config(*args, **kwargs)
+    def _eval_figures(self):
 
-    def _for_string(self, string):
-        """
-        While the generic parameters predict the range of all possible formats,
-        the string (if given) is used to precice this range for the specific
-        string. E.g. if string is '23:44:02' only formats with ':' as separator
-        are produced.
-        """
         fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
 
-        digits = re.findall('[\d]+', string)
-        nondigit = re.findall('[\D]+', string)
-
-        #TODO: seperate the concepts of parser with _formats and _sformats more
-        # accurate.
-
-        if 4 >= len(digits) >= 3: self._figures = fmask([False, False, True])
-        elif len(digits) == 2: self._figures = fmask([False, True, False])
-        elif len(digits) == 1:
+        d = self._values
+        if len(d) == 4: self._figures = fmask([False, False, False, True])
+        elif len(d) == 3: self._figures = fmask([False, False, True, False])
+        elif len(d) == 2: self._figures = fmask([False, True, False, False])
+        elif len(d) == 1:
             if self._allow_no_sep:
-                v = digits[0]
-                if len(v) >= 5: self._figures = fmask([False, False, True])
-                elif 3 <= len(v) <= 4: self._figures = fmask([False, True, True])
-                elif len(v) == 2: self._figures = fmask([True, True, False])
-                elif len(v) == 1: self._figures = fmask([True, False, False])
-            else: self._figures = fmask([True, False, False])
-        else: raise ValueError(self.ERR_MSG % string)
+                v = d[0]
+                if len(v) > 6: self._figures = fmask([False, False, False, True])
+                elif len(v) >= 5: self._figures = fmask([False, False, True, True]) #also figures[3]?
+                elif len(v) >= 3: self._figures = fmask([False, True, True, False])
+                elif len(v) == 2: self._figures = fmask([True, True, False, False])
+                elif len(v) == 1: self._figures = fmask([True, False, False, False])
+            else: self._figures = fmask([True, False, False, False])
+        else: self._figures = [False, False, False, False]
 
-        #TODO: This could be generelized for TimeFormats and DateFormats.
-        if not nondigit and self._allow_no_sep:
-            self._seps = list()
-            self.extend(self._formats())
-        elif len(set(nondigit)) == 1 and nondigit[0] in self._seps:
-            self._seps = [nondigit[0]]
-            self._allow_no_sep = False
-            self.extend(self._formats())
-        else:
-            if self._allow_microsec and len(digits) == 4: clist = [self.CODES[:]]
-            else: clist = self._get_code_list()
-            formats = list()
-            for codes in clist:
-                if len(digits) == 1: codes = [''.join(codes)]
-                formats.append(''.join(map(lambda v,s: v+s if s else v, codes, nondigit)))
+    def _get_formats_for_string(self):
 
-            common = set(formats) & set(self._special_formats())
-            if common: self.extend(list(common))
-            else: raise ValueError(self.ERR_MSG % string)
+        clist = self._get_code_list()
+        formats = list()
+
+        for l in clist:
+            if len(self._values) == 1:
+                c_or_v = lambda v: v if not v.isdigit() else ''.join(l)
+            elif 1 < len(self._values) <= 4:
+                iterator = iter(l)
+                c_or_v = lambda v: v if not v.isdigit() else iterator.next()
+            formats.append(str().join([c_or_v(v) for v in self._alternation]))
+
+        return formats
 
     def _get_code_list(self):
         code_list = list()
         if self._figures[0]: code_list.append(self.CODES[:1])
         if self._figures[1]: code_list.append(self.CODES[:2])
         if self._figures[2]: code_list.append(self.CODES[:3])
+        if self._figures[3]: code_list.append(self.CODES[:4])
         return code_list
 
-    def _special_formats(self):
-        if self._allow_microsec: self._sformats += self.MFORMATS
-        return super(TimeFormats, self)._special_formats()
+    def _get_sformats(self):
+        if self._figures[3]: self._sformats += self.MFORMATS
+        return super(TimeFormats, self)._get_sformats()
 
 
 class DateFormats(BaseFormats):
@@ -521,13 +556,11 @@ class DateFormats(BaseFormats):
 
     SFORMATS_OPTIONS = {
         'little' : [
-            [['%d'], ['.']],
             [['%d'], ['.', '. '], ['%m', '%b'], ['.']],
             [['%d'], ['.'], ['%m', '%b'], ['. '], ['%y', '%Y']],
             [['%d'], ['.', '. '], ['%b', '%B'], [' '], ['%y', '%Y']],
             ],
         'big' : [
-            [['%d'], ['.']],
             [['%m', '%b'], ['.', '. '], ['%d'], ['.']],
             [['%b', '%B'], [' '], ['%d'], ['.']],
             [['%y', '%Y'], [' '], ['%m', '%b'], ['.', '. '], ['%d'], ['.']],
@@ -539,20 +572,20 @@ class DateFormats(BaseFormats):
 
     SFORMATS = list()
 
-    def __init__(self, string=None, seps=None, allow_no_sep=None, figures=None,
-                allow_month_name=None):
-        if allow_month_name is False:
-            self._month_code = [True, False, False]
-        elif allow_month_name is True:
-            self._month_code = [True, True, True]
-        else: self._month_code = self.MONTH_CODE
+    def __init__(self, *args, **kwargs):
+
+        allow_month_name = kwargs.pop('allow_month_name', None)
+        if self.isnone(allow_month_name): self._month_code = self.MONTH_CODE
+        elif allow_month_name: self._month_code = [True, True, True]
+        elif not allow_month_name: self._month_code = [True, False, False]
+
         self._year_code = self.YEAR_CODE
         self.SFORMATS = self.SFORMATS_OPTIONS[ENDIAN._key]
 
-        super(DateFormats, self).__init__(string, seps, allow_no_sep, figures)
+        super(DateFormats, self).__init__(*args, **kwargs)
 
     @classmethod
-    def config(cls, allow_month_name=None, *args, **kwargs):
+    def config(cls, *args, **kwargs):
         """
         Modify class-configuration.
 
@@ -566,10 +599,10 @@ class DateFormats(BaseFormats):
         :type figures:              list
         :type allow_month_name:     bool
         """
-        if allow_month_name is False:
-            cls.MONTH_CODE = [True, False, False]
-        elif allow_month_name is True:
-            cls.MONTH_CODE = [True, True, True]
+        allow_month_name = kwargs.pop('allow_month_name', None)
+        if cls.isnone(allow_month_name): pass
+        elif allow_month_name: cls.MONTH_CODE = [True, True, True]
+        elif not allow_month_name: cls.MONTH_CODE = [True, False, False]
 
         super(DateFormats, cls).config(*args, **kwargs)
         for c in [cls.MONTH_CODE, cls.YEAR_CODE]:
@@ -579,38 +612,39 @@ class DateFormats(BaseFormats):
         for c in [self._month_code, self._year_code, self._figures]:
             if not any(c): raise Exception('invalid configuration')
 
-    def _for_string(self, string):
-        """
-        Checks string for literal month-name and calls the
-        super-class-_for_string-method.
-        """
-        values = re.findall('[^\W_]+', string)
-        seps = re.findall('[\W_]+', string)
+    def _analyse(self, string):
 
-        #masks:
-        fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
-        ymask = lambda y: map(lambda x,y: y if x else x, self._year_code, y)
+        self._eval_ingredients(string)
+        self._eval_monthname(string)
+        self._eval_figures()
+        self._eval_seps_and_formats()
+
+    def _eval_monthname(self, string):
+
         mmask = lambda m: map(lambda x,y: y if x else x, self._month_code, m)
 
-        #check month-code:
         if re.search('(?<![a-zA-Z])[a-zA-Z]{3}(?![a-zA-Z])', string):
             self._month_code = mmask([False, True, False])
         elif re.search('(?<![a-zA-Z])[a-zA-Z]{4,9}(?![a-zA-Z])', string):
             self._month_code = mmask([False, False, True])
         elif not re.search('[a-zA-Z]+', string):
             self._month_code = mmask([True, False, False])
-        else: raise ValueError(self.ERR_MSG % string)
+        else: self._figures = [False, False, False]
 
-        #check values:
-        if len(values) == 3:
-            if len(values[ENDIAN.index('year')]) == 2: self._year_code = ymask([True, False])
+    def _eval_figures(self):
+
+        fmask = lambda f: map(lambda x,y: y if x else x, self._figures, f)
+        ymask = lambda y: map(lambda x,y: y if x else x, self._year_code, y)
+
+        if len(self._values) == 3:
+            if len(self._values[ENDIAN.index('year')]) == 2: self._year_code = ymask([True, False])
             else: self._year_code = ymask([False, True])
             self._figures = fmask([False, False, True])
-        elif len(values) == 2: self._figures = fmask([False, True, False])
-        elif len(values) == 1:
-            value = values[0]
-            if seps: self._figures = fmask([True, False, False])
-            elif not seps and self._allow_no_sep:
+        elif len(self._values) == 2: self._figures = fmask([False, True, False])
+        elif len(self._values) == 1:
+            value = self._values[0]
+            if self._nonvalues: self._figures = fmask([True, False, False])
+            elif not self._nonvalues and self._allow_no_sep:
                 if any(self._month_code[1:]):
                     if value[-1].isalpha(): self._figures = fmask([False, True, False])
                     else: self._figures = fmask([False, False, True])
@@ -621,27 +655,23 @@ class DateFormats(BaseFormats):
                     else: self._figures = fmask([False, False, True])
                     if len(value) <= 5: self._year_code = ymask([True, False])
                     elif len(value) >= 7: self._year_code = ymask([False, True])
-            else: raise ValueError(self.ERR_MSG % string)
-        else: raise ValueError(self.ERR_MSG % string)
+            else: self._figures = [False, False, False]
+        else: self._figures = [False, False, False]
 
-        #check separators:
-        if not seps and self._allow_no_sep:
-            self._seps = list()
-            self.extend(self._formats())
-        #check if it fits a format of self._formats
-        elif len(set(seps)) == 1 and len(seps) < len(values) and seps[0] in self._seps:
-            self._seps = [seps[0]]
-            self._allow_no_sep = False
-            self.extend(self._formats())
-        #check if it fits a format of self._special_formats
-        else:
-            clist = self._get_code_list()
-            formats = list()
-            for codes in clist:
-                formats.append(''.join(map(lambda v,s: v+s if s else v, codes, seps)))
-            common = set(formats) & set(self._special_formats())
-            if common: self.extend(list(common))
-            else: raise ValueError(self.ERR_MSG % string)
+    def _get_formats_for_string(self):
+
+        clist = self._get_code_list()
+        formats = list()
+
+        for l in clist:
+            if len(self._values) == 1:
+                c_or_v = lambda v: v if not v.isalnum() else ''.join(l)
+            elif 1 < len(self._values) <= 4:
+                iterator = iter(l)
+                c_or_v = lambda v: v if not v.isalnum() else iterator.next()
+            formats.append(str().join([c_or_v(v) for v in self._alternation]))
+
+        return formats
 
     def _get_code_list(self):
         def get_code(key):
@@ -663,6 +693,19 @@ class DateFormats(BaseFormats):
             code_list.extend([(x,y,z) for x in cc[0] for y in cc[1] for z in cc[2]])
 
         return code_list
+
+    def _get_formats(self):
+        code_list = self._get_code_list()
+        formats = list()
+        if self._allow_no_sep: self._seps.append(str())
+        for s in self._seps:
+            for codes in code_list:
+                formats.append(s.join(codes))
+                if s == '.' and codes[-1] in ['%m', '%d']:
+                    codes = list(codes)
+                    codes.append(str())
+                    formats.append(s.join(codes))
+        return formats
 
 
 
@@ -690,8 +733,9 @@ class DatetimeFormats(BaseFormats):
     ALLOW_NO_SEP = True
     """Allows formats without any separator ('%H%M%S')."""
 
-    def __init__(self, string=None, seps=None, allow_no_sep=None,
-                date_config=dict(), time_config=dict()):
+    def __init__(self, *args, **kwargs):
+        date_config = kwargs.pop('date_config', dict())
+        time_config = kwargs.pop('time_config', dict())
         self._date_config = dict(
             seps = DateFormats.SEPS,
             allow_no_sep = DateFormats.ALLOW_NO_SEP,
@@ -702,11 +746,10 @@ class DatetimeFormats(BaseFormats):
             seps = TimeFormats.SEPS,
             allow_no_sep = TimeFormats.ALLOW_NO_SEP,
             figures = TimeFormats.FIGURES,
-            allow_microsec = TimeFormats.ALLOW_MICROSEC,
             )
         self._date_config.update(date_config)
         self._time_config.update(time_config)
-        super(DatetimeFormats, self).__init__(string, seps, allow_no_sep)
+        super(DatetimeFormats, self).__init__(*args, **kwargs)
 
     @classmethod
     def config(self, *args, **kwargs):
@@ -725,39 +768,67 @@ class DatetimeFormats(BaseFormats):
         """
         super(DatetimeFormats, self).config(*args, **kwargs)
 
-    def _for_string(self, string):
+    def _check_config(self):
+        pass
+
+    def _analyse(self, string):
+
+        self._eval_ingredients(string)
+        self._seperate_string(string)
+
+    def _seperate_string(self, string):
         """
         Try to reduce the amount of seps for all three format-classes.
         time-seps and date-seps will be passed to the respective constructor.
         """
+
+        self._pairs = list()
+        a = self._alternation
+
+        if len(self._values) == 1 and self._allow_no_sep:
+            i = len(string)
+            while i > 1:
+                i -= 1
+                self._pairs.append((string[:i], str(), string[i:]))
+
+        elif len(self._values) == 2:
+            i = a.index(self._values[0]) + 1
+            self._pairs.append((''.join(a[:i]), a[i], ''.join(a[i+1:])))
+
+        else:
+            nvl = self._nonvalues[:]
+            nvl.reverse()
+
+            #prefer space-seperators
+            spl = [nvl.pop(nvl.index(v)) for v in nvl[:] if ' ' in v]
+            for nv in spl:
+                i = a.index(nv)
+                if i == 0 or i == a.index(a[-1]): continue
+                self._pairs.append((''.join(a[:i]), a[i], ''.join(a[i+1:])))
+
+            for nv in nvl:
+                i = a.index(nv)
+                if i == 0 or i == a.index(a[-1]): continue
+                self._pairs.append((''.join(a[:i]), a[i], ''.join(a[i+1:])))
+
+    def _get_formats_for_string(self):
+
         formats = list()
-        pairs = list()
-        for s in self._seps:
-            i = 0
-            while i <= len(string):
-                try: i = string.index(s, i+1)
-                except ValueError: break
-                else: pairs.append((string[:i], s, string[i:].strip(s)))
 
-        if not pairs:
-            if not self._allow_no_sep: raise ValueError(self.ERR_MSG % string)
-            elif re.findall('[_\W]+', string): raise ValueError(self.ERR_MSG % string)
-            else:
-                i = len(string)
-                while i > 1:
-                    i -= 1
-                    pairs.append((string[:i], str(), string[i:]))
-
-        for d, s, t in pairs:
+        for d, s, t in self._pairs:
             try:
+                #TODO: make the order of date and time configurable
                 df = DateFormats(d)
                 tf = TimeFormats(t)
             except ValueError: continue
-            else: formats.extend([d + s + t for d in df for t in tf])
+            else:
+                fmts = [d + s + t for d in df for t in tf]
+                formats.extend(fmts)
 
-        self.extend([f for i,f in enumerate(formats) if not f in formats[:i]])
+        #make sure the formats-list is unique (using set would destroy the order)
+        return [f for i,f in enumerate(formats) if not f in formats[:i]]
 
-    def _all(self):
+    def _get_all(self):
         """
         Generate datetime-formats by combining date- and time-formats.
         """
@@ -766,18 +837,25 @@ class DatetimeFormats(BaseFormats):
         time_fmt = TimeFormats(**self._time_config)
         for s in self._seps:
             formats += [s.join((d, t)) for d in date_fmt for t in time_fmt]
-        self.extend(formats)
         if self._allow_no_sep:
-            formats = list()
             #TODO: warrant that no sformats are included
             self._date_config['allow_no_sep'] = True
             self._time_config['allow_no_sep'] = True
             self._date_config['seps'] = list()
             self._time_config['seps'] = list()
+            self._date_config['use_sformats'] = False
+            self._time_config['use_sformats'] = False
             date_fmt = DateFormats(**self._date_config)
             time_fmt = TimeFormats(**self._time_config)
             formats += [str().join((d, t)) for d in date_fmt for t in time_fmt]
-            self.extend(formats)
+
+        return formats
+
+
+
+
+
+
 
 
 
