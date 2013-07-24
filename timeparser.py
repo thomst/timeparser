@@ -79,7 +79,7 @@ import inspect
 import warnings
 warnings.simplefilter('default')
 
-__version__ = '0.7.0'
+__version__ = '0.7.1'
 
 class Today:
     """
@@ -423,8 +423,7 @@ class TimeFormats(BaseFormats):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
-    :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
-    :keyword allow_microsec:    Allows formats with microseconds (%f).
+    :keyword figures:           List of four booleans (s. :attr:`FIGURES`).
 
     :type string:               str
     :type seps:                 list
@@ -442,12 +441,13 @@ class TimeFormats(BaseFormats):
     """Allows formats without any separator ('%H%M%S')."""
     FIGURES = [True, True, True, False]
     """
-    List of three booleans that predicts how many digits formats are allowed
+    List of four booleans that predicts how many digits formats are allowed
     to have:
 
     * figures[0]: Allows the one-digit format '%H'.
     * figures[1]: Allows two-digit-formats like '%H:%M'.
     * figures[2]: Allows three-digit-formats like '%H:%M:%S'.
+    * figures[3]: Allows four-digit-formats like '%H:%M:%S.%f'.
     """
     SFORMATS = [
         [['%H'], [':'], ['%M'], [':'], ['%S'], ['h', ' h']],
