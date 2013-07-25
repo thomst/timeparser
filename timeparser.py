@@ -79,7 +79,7 @@ import inspect
 import warnings
 warnings.simplefilter('default')
 
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 
 class Today:
     """
@@ -1000,7 +1000,7 @@ def parsetimedelta(string, key='weeks'):
     values = [int(x) for x in re.findall('[-+]?\d+', string)]
     rkeys = re.findall('[a-zA-Z]+', string)
 
-    try: key = [k for k in kws if k in rkey or re.match(rkey, k)][0]
+    try: key = [k for k in kws if re.match(rkey, k)][0]
     except IndexError: raise ValueError(key_msg % key)
     try: keys = map(lambda r: [k for k in kws if re.match(r, k)][0], rkeys)
     except IndexError: raise ValueError(msg % string)

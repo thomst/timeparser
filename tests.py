@@ -89,7 +89,6 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(parser('w3 h4 s20'), delta(weeks=3, hours=4, seconds=20))
         self.assertEqual(parser('w3 h4 s20', 'min'), delta(weeks=3, hours=4, seconds=20))
         self.assertEqual(parser('1,2,3', 'H'), delta(hours=1, minutes=2, seconds=3))
-        self.assertEqual(parser('1 2 3', 'delta-hours'), delta(hours=1, minutes=2, seconds=3))
         self.assertRaises(ValueError, parser, '20h 0s 4')
 
 
