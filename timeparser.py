@@ -79,7 +79,7 @@ import inspect
 import warnings
 warnings.simplefilter('default')
 
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 
 class Today:
     """
@@ -233,6 +233,8 @@ class BaseFormats(list):
     :keyword string:            Pre-select formats for string.
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
+    :keyword try_hard:          Regardless of any configuration try hard to
+                                build formats for the given string.
     :keyword figures:           List of three booleans that predicts how many
                                 digits formats are allowed to have.
 
@@ -265,6 +267,9 @@ class BaseFormats(list):
     USE_SFORMATS = True
 
     TRY_HARD = False
+    """
+    Regardless of any configuration try hard to build formats for the given string.
+    """
 
     @staticmethod
     def isnone(v): return type(v) == type(None)
@@ -310,6 +315,8 @@ class BaseFormats(list):
 
         :keyword seps:              Allowed separators for formats.
         :keyword allow_no_sep:      Allows formats without any separator.
+        :keyword try_hard:          Regardless of any configuration try hard to
+                                    build formats for the given string.
         :keyword figures:           List of three booleans that predicts how many
                                     digits formats are allowed to have.
 
@@ -424,6 +431,8 @@ class TimeFormats(BaseFormats):
     :keyword seps:              Allowed separators for formats.
     :keyword allow_no_sep:      Allows formats without any separator.
     :keyword figures:           List of four booleans (s. :attr:`FIGURES`).
+    :keyword try_hard:          Regardless of any configuration try hard to
+                                build formats for the given string.
 
     :type string:               str
     :type seps:                 list
@@ -522,6 +531,8 @@ class DateFormats(BaseFormats):
     :keyword allow_no_sep:      Allows formats without any separator.
     :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
     :keyword allow_month_name:  Allows formats with month-names (%b or %B)
+    :keyword try_hard:          Regardless of any configuration try hard to
+                                build formats for the given string.
 
     :type string:               str
     :type seps:                 list
@@ -593,6 +604,8 @@ class DateFormats(BaseFormats):
         :keyword allow_no_sep:      Allows formats without any separator.
         :keyword figures:           List of three booleans (s. :attr:`FIGURES`).
         :keyword allow_month_name:  Allows formats with month-names (%b or %B)
+        :keyword try_hard:          Regardless of any configuration try hard to
+                                    build formats for the given string.
 
         :type seps:                 list
         :type allow_no_sep:         bool
@@ -707,6 +720,10 @@ class DateFormats(BaseFormats):
                     formats.append(s.join(codes))
         return formats
 
+    def _set_any_formats_for_string(self, string):
+        self._month_code = [True, True, True]
+        self._year_code = [True, True]
+        super(DateFormats, self)._set_any_formats_for_string(string)
 
 
 class DatetimeFormats(BaseFormats):
@@ -718,6 +735,8 @@ class DatetimeFormats(BaseFormats):
     :keyword allow_no_sep:      Allows formats without any separator.
     :keyword date_config:       kwargs :class:`DateFormats` are initialized with
     :keyword time_config:       kwargs :class:`TimeFormats` are initialized with
+    :keyword try_hard:          Regardless of any configuration try hard to
+                                build formats for the given string.
 
     :type string:               str
     :type seps:                 list
@@ -760,6 +779,8 @@ class DatetimeFormats(BaseFormats):
         :keyword allow_no_sep:      Allows formats without any separator.
         :keyword date_config:       kwargs :class:`DateFormats` are initialized with
         :keyword time_config:       kwargs :class:`TimeFormats` are initialized with
+        :keyword try_hard:          Regardless of any configuration try hard to
+                                    build formats for the given string.
 
         :type seps:                 list
         :type allow_no_sep:         bool
