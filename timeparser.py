@@ -74,12 +74,11 @@ import datetime
 import re
 import subprocess
 import shlex
-import inspect
 
 import warnings
 warnings.simplefilter('default')
 
-__version__ = '0.7.3'
+__version__ = '0.7.4'
 
 class Today:
     """
@@ -152,7 +151,19 @@ class Endian:
         big = ('year', 'month', 'day'),
         middle = ('month', 'day', 'year')
         )
-    def __init__(self): self.set()
+
+    #TODO: in try_hard-mode all endian-modes should be checked.
+    @property
+    def options(self):
+        """
+        List of endian-options leaded by the set endian-mode.
+        """
+        eithor = ('little', 'big')
+        keys = (self._key, eithor[(eithor.index(self._key)+1)%2], 'middle')
+        return [self.OPTIONS[k] for k in keys]
+
+    def __init__(self):
+        self.set()
 
     def set(self, key=None):
         """
@@ -190,10 +201,16 @@ class Endian:
         # (Mind that this won't work if date +%x returns a datestring with a
         # two-digit-year.)
         #TODO: find a more solid way (which could also regard 'middle')
-        datestring = subprocess.check_output(shlex.split('date +%x'))
+        popen = subprocess.Popen(
+            shlex.split('date +%x'),
+            stdout=subprocess.PIPE
+        )
+        datestring = popen.communicate()[0]
         one, two, three = re.findall('[-+]?\d+', datestring)
-        if int(one) == datetime.date.today().year: return 'big'
-        else: return 'little'
+        if int(one) == datetime.date.today().year:
+            return 'big'
+        else:
+            return 'little'
 
 ENDIAN = Endian()
 """
